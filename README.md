@@ -45,3 +45,32 @@ $ source ./env/bin/activate
 (env) data $ ./massage.sh
 (env) data $ cd ../
 ```
+
+### Running Cassandra with DataStax Python Driver
+
+// TODO: Reformat this to something mor suitable for the marker
+
+1. Start up Cassandra
+
+```
+$ cassandra
+```
+
+// Run python script, refer to the import.py
+
+
+### Exit
+
+* To exit Cassandra
+
+```
+$ ps auwx | grep cassandra
+$ # Get the pid; remember the pid - we will be using it later
+$ kill pid
+```
+
+* To exit the env
+
+```
+(env) $ deactivate
+```
