@@ -28,10 +28,49 @@ def init(current_session=session, parameters={}):
     # current_session.execute(cql_set_consistency)
 
 
-def create_column_families(current_session=session, parameters):
+def create_column_families(current_session=session, parameters={}):
     "Creates Column Families and Materialised View(s) using CQL"
-    # TODO
-    pass
+    default_params = default_parameters.copy()
+    default_params.update(parameters)
+    # Create Customer Column Family
+    cql_create_customer = (
+        "CREATE TABLE {keyspace}.customer( "
+            "w_id       INT, "
+            "d_id       INT, "
+            "c_id       INT, "
+            "w_name     TEXT, "
+            "w_street_1 TEXT, "
+            "w_street_2 TEXT, "
+            "w_tax      DOUBLE, "
+            "d_name     TEXT, "
+            "d_street_1 TEXT, "
+            "d_street_2 TEXT, "
+            "d_tax      DOUBLE, "
+            "c_first    TEXT, "
+            "c_middle   TEXT, "
+            "c_last     TEXT, "
+            "c_street_1 TEXT, "
+            "c_street_2 TEXT, "
+            "c_city     TEXT, "
+            "c_state    TEXT, "
+            "c_zip      TEXT, "
+            "c_phone    TEXT, "
+            "c_since    TIMESTAMP, "
+            "c_credit   TEXT, "
+            "c_credit_lim   DOUBLE, "
+            "c_discount     DOUBLE, "
+            "c_balance      DOUBLE, "
+            "c_ytd_payment  DOUBLE, "
+            "c_payment_cnt  INT, "
+            "c_delivery_cnt INT, "
+            "c_data         TEXT, "
+            "last_order_id  INT, "
+            "last_order_date    TIMESTAMP, "
+            "last_order_carrier INT, "
+            "PRIMARY KEY ((w_id), d_id, c_id) "
+        "); "
+    ).format(**default_params)
+    current_session.execute(cql_create_customer)
 
 
 def loading_data(current_session=session):
@@ -39,7 +78,7 @@ def loading_data(current_session=session):
     #TODO
     pass
 
-def cleanup(current_session=session):
+def cleanup(current_session=session, parameters={}):
     "Clean up by tearing down keyspace"
     default_params = default_parameters.copy()
     default_params.update(parameters)
