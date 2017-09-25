@@ -68,7 +68,7 @@ def create_column_families(current_session=session, parameters={}):
             "last_order_date    TIMESTAMP, "
             "last_order_carrier INT, "
             "PRIMARY KEY ((w_id), d_id, c_id) "
-        "); "
+        ") WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC); "
     ).format(**default_params)
     cql_create_warehouse = (
         "CREATE TABLE {keyspace}.warehouse( "
@@ -97,7 +97,7 @@ def create_column_families(current_session=session, parameters={}):
             "ol_quantity        INT, "
             "ol_dist_info       TEXT, "
             "PRIMARY KEY ((w_id), d_id, o_id, ol_number) "
-        "); "
+        ") WITH CLUSTERING ORDER BY (d_id DESC, o_id DESC, ol_number ASC); "
         ).format(**default_params)
     cql_create_district = (
         "CREATE TABLE {keyspace}.district( "
@@ -113,7 +113,7 @@ def create_column_families(current_session=session, parameters={}):
             "d_next_o_id                INT, "
             "last_unfulfilled_order     INT, "
             "PRIMARY KEY ((w_id), d_id) "
-        "); "
+        ") WITH CLUSTERING ORDER BY (d_id DESC); "
         ).format(**default_params)
     cql_create_order = (
         "CREATE TABLE {keyspace}.order( "
@@ -133,7 +133,7 @@ def create_column_families(current_session=session, parameters={}):
             "popular_item_qty           INT, "
             "ordered_items              SET<INT>, "
             "PRIMARY KEY ((w_id), d_id,o_id) "
-        "); "
+        ")WITH CLUSTERING ORDER BY (d_id DESC, o_id DESC); "
         ).format(**default_params)
     cql_create_stockbywarehouse = (
         "CREATE TABLE {keyspace}.stock_by_warehouse( "
@@ -150,7 +150,7 @@ def create_column_families(current_session=session, parameters={}):
             "s_dist_info                TEXT, "
             "s_data                     TEXT, "
             "PRIMARY KEY ((w_id), i_id) "
-        "); "
+        ") WITH CLUSTERING ORDER BY (i_id DESC); "
         ).format(**default_params)
     cql_create_customerbybalance = (
         "CREATE MATERIALISED VIEW {keyspace}.customer_by_warehouse AS"
@@ -158,6 +158,7 @@ def create_column_families(current_session=session, parameters={}):
             "WHERE w_id IS NOT NULL and d_id IS NOT NULL and "
                 "c_id IS NOT NULL and c_balance IS NOT NULL "
             "PRIMARY KEY ((w_id), d_id, c_id, c_balance) "
+            "WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC, c_balance DESC )"
         "; "
         ).format(**default_params)
     current_session.execute(cql_create_customer)
