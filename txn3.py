@@ -1,5 +1,13 @@
 from time import time
 
+"""
+by yuxin
+
+changes: 
+for part a), find out smallest order from order table instead of 
+from District table (last_unfulfilled_order column)
+since it will need more read and write
+"""
 def txn3(current_session, w_id, carrier_id):
     #TODO: validate carrier_id and w_id
     districts = current_session.execute(
