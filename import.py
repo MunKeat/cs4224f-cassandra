@@ -1,7 +1,10 @@
 from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
 
-cluster = Cluster()
-session = cluster.connect()
+auth_provider = PlainTextAuthProvider(
+        username='cs4224f', password='tE3w8JyB')
+cluster = Cluster(auth_provider=auth_provider)
+session = cluster.connect(['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
 
 ## TODO: Create immutable dict
 default_parameters = {
