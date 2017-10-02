@@ -1,4 +1,5 @@
 from cassandra.cluster import Cluster
+import time
 
 cluster = Cluster()
 session = cluster.connect()
@@ -155,7 +156,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # Compute total amount after tax and discount
     total_amount = total_amount * (1 + d_tax + w_tax) * (1 - discount) 
     # Create a new order
-    o_entry_d = datetime.now
+    o_entry_d = time.time()
     order_info = {
         "w_id": w_id,
         "d_id": d_id,
@@ -207,6 +208,97 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     return output
 
+# Current WIP - Not proven to work
+def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
+    # Retrieve customer information
+    cql_select_customer = (
+        """
+        SELECT *
+        FROM customer
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        AND c_id = %(c_id)s
+        """,
+        {'d_id': d_id, 'w_id': w_id, 'c_id': c_id}
+    )
+    customer = current_session.execute(cql_select_customer)[0]
+    c_balance = customer.c_balance
+    c_ytd_payment = customer.c_ytd_payment
+    # Update customer
+    c_balance -= payment
+    c_ytd_payment += payment
+    current_session.execute(
+        """
+        UPDATE customer
+        SET c_balance = %(c_balance)s,
+        c_ytd_payment = %(c_ytd_payment)s,
+        c_payment_cnt = c_payment_cnt + 1
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        AND c_id = %(d_id)s
+        """,
+        {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
+    )
+    # Retrieve warehouse information
+    cql_select_warehouse = (
+        """
+        SELECT *
+        FROM warehouse
+        WHERE w_id = %(w_id)s
+        """,
+        {'w_id': w_id}
+    )
+    warehouse = current_session.execute(cql_select_warehouse)[0]
+    w_ytd = warehouse.w_ytd
+    # Update warehouse
+    w_ytd += payment
+    current_session.execute(
+        """
+        UPDATE warehouse
+        SET w_ytd = %(w_ytd)s
+        WHERE w_id = %(w_id)s
+        """,
+        {'w_id': c_w_id, 'w_ytd': w_ytd}
+    )
+    # Retrieve district information
+    cql_select_district = (
+        """
+        SELECT *
+        FROM district
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        """,
+        {'d_id': d_id, 'w_id': w_id}
+    )
+    district = current_session.execute(cql_select_district)[0]
+    d_ytd = district.d_ytd
+    # Update district
+    d_ytd += payment
+    current_session.execute(
+        """
+        UPDATE district
+        SET d_ytd = %(d_ytd)s
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        """,
+        {'w_id': c_w_id, 'd_id':c_d_id, 'w_ytd': w_ytd}
+    )
+    output = {
+        'customer': (c_w_id, c_d_id, c_id),
+        'customer_name': (customer.c_first, customer.c_middle, customer. c_last),
+        'customer_address': (customer.c_street_1, customer.c_street_2, customer.c_city, customer.c_state, customer.c_zip),
+        'c_phone': customer.c_phone,
+        'c_since': customer.c_since,
+        'c_credit': customer.c_credit,
+        'c_credit_lim': customer.c_credit_lim,
+        'c_discount': customer.c_discount,
+        'c_balance': c_balance,
+        'warehouse_address': (warehouse.w_street_1, warehouse.w_street_2, warehouse.w_city, warehouse.w_state, warehouse.w_zip),
+        'district_address': (district.d_street_1, district.d_street_2, district.d_city, district.d_state, district.d_zip),
+        'payment': payment
+    }
+    return output
+    
 # Current WIP - Not proven to work
 def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     parameters = {
