@@ -166,7 +166,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     cql_create_order = (
         """
-        INSERT INTO order
+        INSERT INTO orders
         (w_id, d_id, o_id, c_id, 
             o_ol_cnt, o_all_local, o_entry_d, 
             c_first, c_middle, c_last, 
@@ -301,7 +301,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     cql_select_order = (
         "SELECT w_id, d_id, o_id. o_entry_d. c_first, c_middle, c_last, "
         "popular_item_id, popular_item_name, popular_item_qty, ordered_items "
-        "FROM order "
+        "FROM orders "
         "WHERE w_id %(w_id)s AND d_id %(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
