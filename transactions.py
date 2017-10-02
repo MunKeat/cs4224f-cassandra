@@ -35,7 +35,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         """,
         {'w_id': w_id}
     )
-    w_tax = current_session.execute(cql_get_w_tax)[0].w_tax
+    w_tax = current_session.execute(cql_select_warehouse)[0].w_tax
     # Retrieve district info
     cql_select_district = (
         """
@@ -142,7 +142,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_info = [w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info]
         current_session.execute(create_ol_stmt, ol_info)
         # Update other info for output
-        ordered_item[ol_number] = {
+        ordered_item = {
                 'item_number': ol_i_id, 
                 'i_name': item_name, 
                 'supplier_warehouse': ol_supply_w_id,
@@ -150,20 +150,20 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
                 'ol_amount': item_amount,
                 's_quantity': adjusted_qty
         }
-        ordered_items.add(ordered_item)
+        ordered_items[ol_number] = ordered_item
         all_item_id.add(ol_i_id)
 
     # Compute total amount after tax and discount
-    total_amount = total_amount * (1 + d_tax + w_tax) * (1 - discount) 
+    total_amount = total_amount * (1 + d_tax + w_tax) * (1 - c_discount)
     # Create a new order
     o_entry_d = time.time()
     order_info = {
-        "w_id": w_id,
-        "d_id": d_id,
+        'w_id': w_id,
+        'd_id': d_id,
         "o_id": order_number,
         "c_id": c_id,
         "o_ol_cnt": M,
-        "o_all_loca": (int)isAllLocal,
+        "o_all_loca": int(isAllLocal),
         "o_entry_d": o_entry_d,
         "c_first": c_first,
         "c_middle": c_middle,
@@ -219,7 +219,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
-        {'d_id': d_id, 'w_id': w_id, 'c_id': c_id}
+        {'d_id': c_d_id, 'w_id': c_w_id, 'c_id': c_id}
     )
     customer = current_session.execute(cql_select_customer)[0]
     c_balance = customer.c_balance
@@ -246,7 +246,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         FROM warehouse
         WHERE w_id = %(w_id)s
         """,
-        {'w_id': w_id}
+        {'w_id': c_w_id}
     )
     warehouse = current_session.execute(cql_select_warehouse)[0]
     w_ytd = warehouse.w_ytd
@@ -268,7 +268,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
-        {'d_id': d_id, 'w_id': w_id}
+        {'d_id': c_d_id, 'w_id': c_w_id}
     )
     district = current_session.execute(cql_select_district)[0]
     d_ytd = district.d_ytd
