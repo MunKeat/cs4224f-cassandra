@@ -70,14 +70,15 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     isAllLocal = True
 
     # Prepared statements for order line transactions
-    # TODO: concatenate column name
+    s_dist_col_name = 's_dist_' + d_id
     get_stock_stmt = session.prepare(
         """
-        SELECT s_quantity, s_ytd, ('s_dist_' + d_id) AS s_dist_info
+        SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info
         FROM stockByWarehouse
         WHERE w_id = ?
         AND i_id = ?
-        """
+        """,
+        {'s_dist': s_dist_col_name}
     )
     update_stock_stmt = session.prepare(
         """
