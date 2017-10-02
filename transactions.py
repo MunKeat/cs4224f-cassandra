@@ -71,9 +71,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
 
     # Prepared statements for order line transactions
     s_dist_col_name = 's_dist_' + d_id
-    get_stock_stmt = session.prepare(
+    get_item_stock_stmt = session.prepare(
         """
-        SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info
+        SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info, i_name, i_price
         FROM stockByWarehouse
         WHERE w_id = ?
         AND i_id = ?
@@ -87,14 +87,6 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         s_ytd = ?,
         s_order_cnt = s_order_cnt + 1
         s_remote_cnt = s_remote_cnt + ?
-        WHERE w_id = ?
-        AND i_id = ?
-        """
-    )
-    get_item_stmt = session.prepare(
-        """
-        SELECT i_name, i_price
-        FROM stockByWarehouse
         WHERE w_id = ?
         AND i_id = ?
         """
@@ -114,11 +106,15 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_i_id = item[0]
         ol_supply_w_id = item[1]
         ol_quantity = item[2]
-        # Retrieve stock info
-        stock = current_session.execute(get_stock_stmt, [ol_supply_w_id, ol_i_id])[0]
+        # Retrieve stock and item info
+        item_stock = current_session.execute(get_item_stock_stmt, [ol_supply_w_id, ol_i_id])[0]
         stock_qty = stock.s_quantity
         stock_ytd = stock.s_ytd
         ol_dist_info = stock.s_dist_info
+        item_price = item_stock.i_price
+        item_name = item_stock.i_name
+        item_amount = ol_quantity * item_price
+        total_amount += item_amount
         # Update stock
         adjusted_qty = stock_qty - ol_quantity
         if (adjusted_qty < 10):
@@ -128,12 +124,6 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         if isRemote:
             isAllLocal = False
         current_session.execute(update_stock_stmt, [adjusted_qty, stock_ytd_adjusted, isRemote, ol_supply_w_id, ol_i_id])
-        # Retrieve item info
-        item = current_session.execute(get_item_stmt, [ol_supply_w_id, ol_i_id])[0]
-        item_price = item.i_price
-        item_name = item.i_name
-        item_amount = ol_quantity * item_price
-        total_amount += item_amount
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
