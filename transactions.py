@@ -20,17 +20,16 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
         "LIMIT %(l)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
-    number_of_entries = length(rows)
+    number_of_entries = len(rows)
     # Get distinct popular items
-    distinct_popular_item = list(set([(row.popular_item_name, int(row.popular_item_id)) for row in rows]))s
+    distinct_popular_item = list(set([(row.popular_item_name, int(row.popular_item_id)) for row in rows]))
     # Get a list of ordered items
     ordered_items = ([list(row.ordered_items) for row in rows])
     # Perform percentage count
     raw_count = ([(item_id in single_ordered_items).count(True)
                   for single_ordered_items in ordered_items]
                     for item_id, item_name in distinct_popular_item)
-    output = [item, float(item_count) / number_of_entries
-                for item, item_count in zip(distinct_popular_item, raw_count)]
+    #output = [item, float(item_count) / number_of_entries for item, item_count in zip(distinct_popular_item, raw_count)]
     # TODO: Process rows to output json
 
 
