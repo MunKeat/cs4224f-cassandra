@@ -23,7 +23,7 @@ def txn3(current_session, w_id, carrier_id):
         orders = current_session.execute(
             """
             SELECT * 
-            FROM  {keyspace}.order
+            FROM  {keyspace}.orders
             WHERE w_id = %s
             AND d_id = %s;
             """,
@@ -41,7 +41,7 @@ def txn3(current_session, w_id, carrier_id):
         # b)
         current_session.execute(
                     """
-                    UPDATE  {keyspace}.order
+                    UPDATE  {keyspace}.orders
                         SET o_carrier_id = %s
                         WHERE w_id = %s 
                         AND d_id = %s
