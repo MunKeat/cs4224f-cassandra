@@ -3,8 +3,9 @@ from cassandra.auth import PlainTextAuthProvider
 
 auth_provider = PlainTextAuthProvider(
         username='cs4224f', password='tE3w8JyB')
-cluster = Cluster(auth_provider=auth_provider)
-session = cluster.connect(['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
+# cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'] ,auth_provider=auth_provider)
+cluster = Cluster()
+session = cluster.connect()
 
 ## TODO: Create immutable dict
 default_parameters = {
@@ -120,7 +121,7 @@ def create_column_families(current_session=session, parameters={}):
         ") WITH CLUSTERING ORDER BY (d_id DESC); "
         ).format(**default_params)
     cql_create_order = (
-        "CREATE TABLE {keyspace}.order( "
+        "CREATE TABLE {keyspace}.orders( "
             "w_id                       INT, "
             "d_id                       INT, "
             "o_id                       INT, "
@@ -136,7 +137,7 @@ def create_column_families(current_session=session, parameters={}):
             "popular_item_name          TEXT, "
             "popular_item_qty           INT, "
             "ordered_items              SET<INT>, "
-            "PRIMARY KEY ((w_id, d_id),o_id) "
+            "PRIMARY KEY ((w_id), d_id,o_id) "
         ")WITH CLUSTERING ORDER BY (d_id DESC, o_id ASC); "
         ).format(**default_params)
     cql_create_stockbywarehouse = (
@@ -147,11 +148,20 @@ def create_column_families(current_session=session, parameters={}):
             "i_price                    DOUBLE, "
             "i_im_id                    INT, "
             "i_data                     TEXT, "
-            "s_quantity                 INT, "
-            "s_ytd                      INT, "
+            "s_quantity                 DOUBLE, "
+            "s_ytd                      DOUBLE, "
             "s_order_cnt                INT, "
             "s_remote_cnt               INT, "
-            "s_dist_info                TEXT, "
+            "s_dist_info_01             TEXT, "
+            "s_dist_info_02             TEXT, "
+            "s_dist_info_03             TEXT, "
+            "s_dist_info_04             TEXT, "
+            "s_dist_info_05             TEXT, "
+            "s_dist_info_06             TEXT, "
+            "s_dist_info_07             TEXT, "
+            "s_dist_info_08             TEXT, "
+            "s_dist_info_09             TEXT, "
+            "s_dist_info_10             TEXT, "
             "s_data                     TEXT, "
             "PRIMARY KEY ((w_id), i_id) "
         ") WITH CLUSTERING ORDER BY (i_id DESC); "
@@ -170,14 +180,14 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_orderline)
     current_session.execute(cql_create_district)
     current_session.execute(cql_create_order)
-    current_session.execute(cql_create_district)
     current_session.execute(cql_create_stockbywarehouse)
-    current_session.execute(cql_create_customerbybalance)
+    # current_session.execute(cql_create_customerbybalance)
 
-
+import subprocess
 def loading_data(current_session=session):
     "Upload data"
     #TODO
+    subprocess.call("cqlsh -f import.cql",shell=True)
     pass
 
 def cleanup(current_session=session, parameters={}):
@@ -185,6 +195,11 @@ def cleanup(current_session=session, parameters={}):
     default_params = default_parameters.copy()
     default_params.update(parameters)
     # CQL Statements
-    cql_drop_keyspace = "DROP KEYSPACE {keyspace}".format(**default_params)
+    cql_drop_keyspace = "DROP KEYSPACE IF EXISTS {keyspace}".format(**default_params)
     # Execute CQL Statement
     current_session.execute(cql_drop_keyspace)
+
+if __name__ == '__main__':
+    cleanup()
+    init()
+    create_column_families()
