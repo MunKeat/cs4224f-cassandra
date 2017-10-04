@@ -7,7 +7,7 @@ import subprocess
 def act_test(act_file):
 	f=open(act_file)
 	line = f.readline()
-	
+
 	while line:
 		para=line.strip().split(",")
 		if para[0]=="N":
@@ -19,7 +19,7 @@ def act_test(act_file):
 			new_order_line=list()
 
 		elif para[0]=="P":
-			payment_transaction(c_w_id=int(para[1]), c_d_id=int(para[2]), c_id=int(para[3]), payment, current_session=session)
+			payment_transaction(c_w_id=int(para[1]), c_d_id=int(para[2]), c_id=int(para[3]), payment=float(para[4]), current_session=session)
 		elif para[0]=="D":
 			txn3(current_session=session, w_id=int(para[1]), carrier_id=int(para[2]))
 		elif para[0]=="O":
