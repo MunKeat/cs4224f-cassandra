@@ -108,9 +108,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_quantity = item[2]
         # Retrieve stock and item info
         item_stock = current_session.execute(get_item_stock_stmt, [ol_supply_w_id, ol_i_id])[0]
-        stock_qty = stock.s_quantity
-        stock_ytd = stock.s_ytd
-        ol_dist_info = stock.s_dist_info
+        stock_qty = item_stock.s_quantity
+        stock_ytd = item_stock.s_ytd
+        ol_dist_info = item_stock.s_dist_info
         item_price = item_stock.i_price
         item_name = item_stock.i_name
         item_amount = ol_quantity * item_price
@@ -226,7 +226,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         c_payment_cnt = c_payment_cnt + 1
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
-        AND c_id = %(d_id)s
+        AND c_id = %(c_id)s
         """,
         {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
     )
@@ -299,7 +299,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
         "l": L
     }
     cql_select_order = (
-        "SELECT w_id, d_id, o_id,orderd_items"
+        "SELECT w_id, d_id, o_id,ordered_items"
         "FROM orders "
         "WHERE w_id = %(w_id)s AND d_id = %(d_id)s "
         "ORDER BY o_id DESC "
@@ -309,7 +309,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     number_of_entries = len(rows)
     all_item_id = set()
     for row in rows:
-        all_item_id = all_item_id | row.orderd_items
+        all_item_id = all_item_id | row.ordered_items
     parameters["all_item_id"]=all_item_id
     cql_select_order = (
         "SELECT w_id, i_id, i_name"
