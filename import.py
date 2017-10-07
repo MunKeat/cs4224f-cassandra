@@ -188,7 +188,60 @@ def loading_data(current_session=session):
     "Upload data"
     #TODO
     subprocess.call("cqlsh -f import.cql",shell=True)
-    pass
+    
+
+    ##fill order (unfinished)
+    parameters = {}
+    cql_select_order = (
+    )
+    rows = current_session.execute(cql_select_order, parameters=parameters)
+    number_of_entries = len(rows)
+    ordered_items = set()
+    max_item_qty=0
+    for row in rows:
+        ordered_items.add(row.ol_i_id)
+        if row.ol_quantity > max_item_qty:
+            max_item_qty=row.ol_quantity
+            parameters["popular_item_id"]=row.ol_i_id
+            parameters["popular_item_name"]=row.ol_i_name
+            parameters["popular_item_qty"]=row.ol_quantity
+
+    parameters["ordered_items"]=ordered_items
+    
+    parameters["w_id"]
+    parameters["d_id"]
+    parameters["o_id"]
+    cql_update_order = (
+        "UPDATE orders"
+        "SET popular_item_id = %(popular_item_id)s, "
+        "popular_item_name = %(popular_item_name)s, "
+        "popular_item_qty = %(popular_item_qty)s, "
+        "ordered_items = %(ordered_items)s "
+        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s AND o_id = %(o_id)s"
+    )
+    rows = current_session.execute(cql_update_order, parameters=parameters)
+
+    ##fill district (unfinished)
+    parameters = {}
+    parameters["w_id"]
+    parameters["d_id"]
+    
+    cql_select_order = (
+        "SELECT w_id, d_id, o_id "
+        "FROM orders "
+        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s AND c_id = NULL "
+        "ORDER BY o_id ASC "
+        "LIMIT 1"
+    )
+    rows = current_session.execute(cql_select_order, parameters=parameters)
+    parameters["last_unfulfilled_order"]=rows[0].o_id
+    cql_update_order = (
+        "UPDATE orders "
+        "SET last_unfulfilled_order = %(last_unfulfilled_order)s "
+        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s"
+    )
+    rows = current_session.execute(cql_update_order, parameters=parameters)
+    ##fill customer (unfinished)
 
 def cleanup(current_session=session, parameters={}):
     "Clean up by tearing down keyspace"
