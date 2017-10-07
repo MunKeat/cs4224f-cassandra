@@ -184,64 +184,120 @@ def create_column_families(current_session=session, parameters={}):
     # current_session.execute(cql_create_customerbybalance)
 
 import subprocess
+import csv
 def loading_data(current_session=session):
     "Upload data"
     #TODO
     subprocess.call("cqlsh -f import.cql",shell=True)
-    
+    #read w_id from csv into list
+    with open('wid_list.csv', 'r') as fp_w:
+        reader = csv.reader(fp_w, delimiter='\n')
+        data_read = [row for row in reader]
+        data_list = [row[0] for row in data_read]
+        #wid_list in the format of: [1, 2, 3]
+        wid_list = [int(row) for row in data_list]
+    #read customer_id from csv into list
+    with open('cid_list.csv', 'r') as fp_c:
+        reader = csv.reader(fp_c, delimiter=',')
+        data_read = [row for row in reader]
+        #cid_list in the format of: [[1, 1, 1], [1, 1, 2], [1, 1, 3]]
+        cid_list = [[int(row[0]), int(row[1]), int(row[2])] for row in data_read]
 
-    ##fill order (unfinished)
-    parameters = {}
-    cql_select_order = (
-    )
-    rows = current_session.execute(cql_select_order, parameters=parameters)
-    number_of_entries = len(rows)
-    ordered_items = set()
-    max_item_qty=0
-    for row in rows:
-        ordered_items.add(row.ol_i_id)
-        if row.ol_quantity > max_item_qty:
-            max_item_qty=row.ol_quantity
-            parameters["popular_item_id"]=row.ol_i_id
-            parameters["popular_item_name"]=row.ol_i_name
-            parameters["popular_item_qty"]=row.ol_quantity
+    ##fill order: popular_item info
+    for w_id in wid_list:
+        for d_id in range(1, 11):
+            orders = current_session.execute(
+                """
+                SELECT o_id
+                FROM  {keyspace}.orders
+                WHERE w_id = %s
+                AND d_id = %s;
+                """,
+                (w_id, d_id)
+            )
+            for order in orders:
+                orderlines = current_session.execute(
+                    """
+                    SELECT * 
+                    FROM  {keyspace}.orderline
+                    WHERE w_id = %s
+                    AND d_id = %s
+                    AND o_id = %s;
+                    """,
+                    (w_id, d_id, order.o_id)
+                )
+                popular_item_id = None
+                popular_item_qty = -1
+                popular_item_name = None
+                ordered_items = set()
+                for orderline in orderlines:
+                    if popular_item_qty < orderline.ol_quantity:
+                        popular_item_qty = orderline.ol_quantity
+                        popular_item_name = orderline.ol_i_name
+                        popular_item_id = orderline.ol_i_id
+                    ordered_items.add(orderline.ol_i_id)
+                current_session.execute(
+                    """
+                    UPDATE  {keyspace}.order
+                        SET popular_item_qty = %s AND popular_item_name = %s AND popular_item_id = %s AND ordered_items = %s
+                        WHERE w_id = %s 
+                        AND d_id = %s
+                        AND o_id = %s;
+                    """,
+                    (popular_item_qty, popular_item_name, popular_item_id, ordered_items, w_id, d_id, order.o_id)
+                )
 
-    parameters["ordered_items"]=ordered_items
-    
-    parameters["w_id"]
-    parameters["d_id"]
-    parameters["o_id"]
-    cql_update_order = (
-        "UPDATE orders"
-        "SET popular_item_id = %(popular_item_id)s, "
-        "popular_item_name = %(popular_item_name)s, "
-        "popular_item_qty = %(popular_item_qty)s, "
-        "ordered_items = %(ordered_items)s "
-        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s AND o_id = %(o_id)s"
-    )
-    rows = current_session.execute(cql_update_order, parameters=parameters)
+    ##fill district: last_unfulfilled_id
+    for w_id in wid_list:
+        for d_id in range(1, 11):
+            orders = current_session.execute(
+                """
+                SELECT o_id
+                FROM  {keyspace}.orders
+                WHERE w_id = %s
+                AND d_id = %s
+                LIMIT 1;
+                """,
+                (w_id, d_id)
+            )
+            if len(orders) == 0:
+                continue
+            current_session.execute(
+                """
+                UPDATE  {keyspace}.district
+                    SET last_unfulfilled_order = %s
+                    WHERE w_id = %s 
+                    AND d_id = %s;
+                """,
+                (orders[0].o_id, w_id, d_id)
+            )
 
-    ##fill district (unfinished)
-    parameters = {}
-    parameters["w_id"]
-    parameters["d_id"]
-    
-    cql_select_order = (
-        "SELECT w_id, d_id, o_id "
-        "FROM orders "
-        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s AND c_id = NULL "
-        "ORDER BY o_id ASC "
-        "LIMIT 1"
-    )
-    rows = current_session.execute(cql_select_order, parameters=parameters)
-    parameters["last_unfulfilled_order"]=rows[0].o_id
-    cql_update_order = (
-        "UPDATE orders "
-        "SET last_unfulfilled_order = %(last_unfulfilled_order)s "
-        "WHERE w_id = %(w_id)s AND d_id = %(d_id)s"
-    )
-    rows = current_session.execute(cql_update_order, parameters=parameters)
-    ##fill customer (unfinished)
+    ##fill customer: last_order_id
+    for customer in cid_list:
+        orders = current_session.execute(
+            """
+            SELECT o_id
+            FROM  {keyspace}.orders
+            WHERE w_id = %s
+            AND d_id = %s
+            AND c_id = %s;
+            """,
+            (customer[0], customer[1], customer[2])
+        )
+        if len(orders) == 0:
+            continue
+        last_order_id = orders[len(orders) - 1].o_id
+        current_session.execute(
+            """
+            UPDATE  {keyspace}.customer
+                SET last_order_id = %s
+                WHERE w_id = %s 
+                AND d_id = %s
+                AND c_id = %s;
+            """,
+            (last_order_id, customer[0], customer[1], customer[2])
+        )
+
 
 def cleanup(current_session=session, parameters={}):
     "Clean up by tearing down keyspace"

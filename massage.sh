@@ -144,6 +144,9 @@ sed -i 's/$/,null,null,null/' cassandra_customer.csv
 sed -i 's/$/,null/' cassandra_district.csv
 sed -i 's/$/,null,null,null,null/' cassandra_order.csv
 
+## Extract w_id and customer_id into csv file
+awk -F "," '{printf("%d\n", $1) }' ./warehouse.csv >>wid_list.csv
+awk -F "," '{print $1 "," $2 "," $3}' ./customer.csv >>cid_list.csv
 
 # Cleanup
 rm ./temp_warehouse_district.csv
