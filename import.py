@@ -214,14 +214,14 @@ def load_data(current_session=session, parameters={}):
             "last_order_id, last_order_date, last_order_carrier )"
         "FROM '{data_dir}/cassandra_customer.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        ).format(**default_params)
     cql_copy_warehouse = (
         "COPY {keyspace}.warehouse ("
             "w_id, w_name, w_street_1, w_street_2, "
             "w_city, w_state, w_zip, w_tax, w_ytd )"
         "FROM '{data_dir}/cassandra_warehouse.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        ).format(**default_params)
     cql_copy_orders = (
         "COPY {keyspace}.orders ("
             "w_id, d_id, o_id, c_id, o_carrier_id, o_ol_cnt, "
@@ -231,7 +231,7 @@ def load_data(current_session=session, parameters={}):
             "ordered_items)"
         "FROM '{data_dir}/cassandra_order.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        ).format(**default_params)
     cql_copy_stockitem = (
         "COPY {keyspace}.stock_by_warehouse ("
             "w_id, i_id, i_name, i_price, i_im_id, i_data, "
@@ -242,7 +242,7 @@ def load_data(current_session=session, parameters={}):
             "s_dist_info_10, s_data)"
         "FROM '{data_dir}/cassandra_stockitem.csv' WITH DELIMITER=',' "
         "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        ).format(**default_params)
     cql_copy_district = (
         "COPY {keyspace}.district ("
             "w_id, d_id, d_name, d_street_1, d_street_2, "
@@ -250,14 +250,15 @@ def load_data(current_session=session, parameters={}):
             "last_unfulfilled_order) "
         "FROM '{data_dir}/cassandra_district.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        ).format(**default_params)
     cql_copy_orderline =(
-    "COPY {keyspace}.orderline ("
-        "w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, "
-        "ol_delivery_d, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)"
-    "FROM '{data_dir}/cassandra_order-line.csv' WITH DELIMITER=',' "
-        "AND HEADER=FALSE AND NULL='{null_rep}';"
-    ).format(**default_params)
+        "COPY {keyspace}.orderline ("
+            "w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, "
+            "ol_delivery_d, ol_amount, ol_supply_w_id, ol_quantity, "
+            "ol_dist_info)"
+        "FROM '{data_dir}/cassandra_order-line.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+        ).format(**default_params)
     # Consolidate all COPY commands
     list_of_copy_command = [cql_copy_customer, cql_copy_warehouse,
         cql_copy_orders, cql_copy_stockitem, cql_copy_district,
@@ -265,7 +266,6 @@ def load_data(current_session=session, parameters={}):
     # Execute
     for cql_command in list_of_copy_command:
         subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_command])
-
 
 def update_data(current_session=session):
     #read w_id from csv into list
