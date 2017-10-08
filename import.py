@@ -1,5 +1,6 @@
-import subprocess
 import csv
+import os
+import subprocess
 
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
@@ -20,6 +21,9 @@ default_parameters = {
 
 ## TODO: Ensure it runs for all computer (i.e. no hardcoding of path)
 cqlsh_path = "/home/stuproj/cs4224f/cassandra/bin/cqlsh"
+
+current_directory = os.path.dirname(os.path.realpath(__file__))
+data_directory = os.path.join(os.path.sep, current_directory, "data")
 
 def create_keyspace(current_session=session, parameters={}):
     "Create keyspace"
@@ -89,7 +93,8 @@ def create_column_families(current_session=session, parameters={}):
         "CREATE TABLE {keyspace}.warehouse( "
             "w_id       INT, "
             "w_name     TEXT, "
-            "w_street   TEXT, "
+            "w_street_1 TEXT, "
+            "w_street_2 TEXT, "
             "w_city     TEXT, "
             "w_state    TEXT, "
             "w_zip      TEXT, "
@@ -194,10 +199,75 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_stockbywarehouse)
     # current_session.execute(cql_create_customerbybalance)
 
-def loading_data(current_session=session):
-    "Upload data"
-    #TODO
-    subprocess.call("cqlsh -f import.cql",shell=True)
+def load_data(current_session=session, parameters={}):
+    "Upload csv files"
+    default_params = default_parameters.copy()
+    default_params.update({"data_dir": data_directory, "null_rep": "null"})
+    default_params.update(parameters)
+    cql_copy_customer = (
+        "COPY {keyspace}.customer ("
+            "w_id, d_id , c_id, w_name, w_street_1, w_street_2, w_tax, d_name,"
+            "d_street_1, d_street_2, d_tax, c_first, c_middle, c_last, "
+            "c_street_1, c_street_2, c_city, c_state, c_zip,"
+            "c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, "
+            "c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data,"
+            "last_order_id, last_order_date, last_order_carrier )"
+        "FROM '{data_dir}/cassandra_customer.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    cql_copy_warehouse = (
+        "COPY {keyspace}.warehouse ("
+            "w_id, w_name, w_street_1, w_street_2, "
+            "w_city, w_state, w_zip, w_tax, w_ytd )"
+        "FROM '{data_dir}/cassandra_warehouse.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    cql_copy_orders = (
+        "COPY {keyspace}.orders ("
+            "w_id, d_id, o_id, c_id, o_carrier_id, o_ol_cnt, "
+            "o_all_local, o_entry_d,"
+            "c_first, c_middle, c_last, "
+            "popular_item_id, popular_item_name, popular_item_qty, "
+            "ordered_items)"
+        "FROM '{data_dir}/cassandra_order.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    cql_copy_stockitem = (
+        "COPY {keyspace}.stock_by_warehouse ("
+            "w_id, i_id, i_name, i_price, i_im_id, i_data, "
+            "s_quantity, s_ytd, s_order_cnt, s_remote_cnt, "
+            "s_dist_info_01, s_dist_info_02, s_dist_info_03, "
+            "s_dist_info_04, s_dist_info_05, s_dist_info_06, "
+            "s_dist_info_07, s_dist_info_08, s_dist_info_09, "
+            "s_dist_info_10, s_data)"
+        "FROM '{data_dir}/cassandra_stockitem.csv' WITH DELIMITER=',' "
+        "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    cql_copy_district = (
+        "COPY {keyspace}.district ("
+            "w_id, d_id, d_name, d_street_1, d_street_2, "
+            "d_city, d_state, d_zip, d_tax, d_ytd, d_next_o_id, "
+            "last_unfulfilled_order) "
+        "FROM '{data_dir}/cassandra_district.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    cql_copy_orderline =(
+    "COPY {keyspace}.orderline ("
+        "w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, "
+        "ol_delivery_d, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)"
+    "FROM '{data_dir}/cassandra_order-line.csv' WITH DELIMITER=',' "
+        "AND HEADER=FALSE AND NULL='{null_rep}';"
+    ).format(**default_params)
+    # Consolidate all COPY commands
+    list_of_copy_command = [cql_copy_customer, cql_copy_warehouse,
+        cql_copy_orders, cql_copy_stockitem, cql_copy_district,
+        cql_copy_orderline]
+    # Execute
+    for cql_command in list_of_copy_command:
+        subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_command])
+
+
+def update_data(current_session=session):
     #read w_id from csv into list
     with open('wid_list.csv', 'r') as fp_w:
         reader = csv.reader(fp_w, delimiter='\n')
@@ -307,7 +377,6 @@ def loading_data(current_session=session):
             (last_order_id, customer[0], customer[1], customer[2])
         )
 
-
 def cleanup(current_session=session, parameters={}):
     "Clean up by tearing down keyspace"
     default_params = default_parameters.copy()
@@ -322,3 +391,4 @@ if __name__ == '__main__':
     create_keyspace()
     set_consistency()
     create_column_families()
+    load_data()
