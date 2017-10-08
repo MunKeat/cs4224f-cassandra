@@ -1,4 +1,4 @@
-import time
+from datetime import datetime
 
 """
 by yuxin
@@ -61,7 +61,7 @@ def txn3(current_session, w_id, carrier_id):
             """,
             (w_id, district.d_id, o_id)
         )
-        timestamp = time.time()
+        timestamp = datetime.utcnow()
         for orderline in orderlines:
             order_amt += orderline.ol_amount
             current_session.execute(

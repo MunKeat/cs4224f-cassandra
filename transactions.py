@@ -1,5 +1,5 @@
 from cassandra.cluster import Cluster
-import time
+from datetime import datetime
 
 cluster = Cluster()
 session = cluster.connect()
@@ -147,7 +147,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # Compute total amount after tax and discount
     total_amount = total_amount * (1 + d_tax + w_tax) * (1 - c_discount)
     # Create a new order
-    o_entry_d = time.time()
+    o_entry_d = datetime.utcnow()
     order_info = {
         'w_id': w_id,
         'd_id': d_id,
