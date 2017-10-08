@@ -1,3 +1,6 @@
+import subprocess
+import csv
+
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 
@@ -15,8 +18,11 @@ default_parameters = {
     "consistency": "one"
 }
 
-def init(current_session=session, parameters={}):
-    "Create keyspace, and possibly set CONSISTENCY"
+## TODO: Ensure it runs for all computer (i.e. no hardcoding of path)
+cqlsh_path = "/home/stuproj/cs4224f/cassandra/bin/cqlsh"
+
+def create_keyspace(current_session=session, parameters={}):
+    "Create keyspace"
     default_params = default_parameters.copy()
     default_params.update(parameters)
     # CQL Statements
@@ -26,11 +32,16 @@ def init(current_session=session, parameters={}):
             "'class': '{strategy}', "
             "'replication_factor':'{replication}' }}"
     ).format(**default_params)
-    cql_set_consistency = "CONSISTENCY {consistency}".format(**default_params)
     # Execute CQL Statement
     current_session.execute(cql_create_keyspace)
-    # current_session.execute(cql_set_consistency)
 
+def set_consistency(current_session=session, parameters={}):
+    "Set CONSISTENCY"
+    default_params = default_parameters.copy()
+    default_params.update(parameters)
+    cql_set_consistency = "CONSISTENCY {consistency}".format(**default_params)
+    # Execute set consistency
+    subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_set_consistency])
 
 def create_column_families(current_session=session, parameters={}):
     "Creates Column Families and Materialised View(s) using CQL"
@@ -183,8 +194,6 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_stockbywarehouse)
     # current_session.execute(cql_create_customerbybalance)
 
-import subprocess
-import csv
 def loading_data(current_session=session):
     "Upload data"
     #TODO
@@ -310,5 +319,6 @@ def cleanup(current_session=session, parameters={}):
 
 if __name__ == '__main__':
     cleanup()
-    init()
+    create_keyspace()
+    set_consistency()
     create_column_families()
