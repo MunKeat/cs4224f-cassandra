@@ -39,7 +39,8 @@ function create_new_csv () {
           1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 -e "null"\
        "${data_dir}/stock.csv" "${data_dir}/item.csv" > "${data_dir}/cassandra_stockitem.csv"
 
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cassandra_stockitem.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_stockitem.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_stockitem.csv"; fi
 
   # Joins Warehouse with District
   # Produce (Temporary) Warehouse District
@@ -56,7 +57,8 @@ function create_new_csv () {
        <(paste -d',' <(cut -d',' --output-delimiter=- -f1,2 "${data_dir}/customer.csv") "${data_dir}/customer.csv" | sort -t',' -k1,1) \
        <(paste -d',' <(cut -d',' --output-delimiter=- -f1,2 "${data_dir}/temp_warehouse_district.csv") "${data_dir}/temp_warehouse_district.csv" | sort -t',' -k1,1) > "${data_dir}/cassandra_customer.csv"
 
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cassandra_customer.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_customer.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_customer.csv"; fi
 
   # Change order table, join Customer
   join -a 1 -j 1 -t ','\
@@ -66,7 +68,8 @@ function create_new_csv () {
      <(paste -d',' <(cut -d',' --output-delimiter=- -f1,2,3 "${data_dir}/customer.csv") "${data_dir}/customer.csv" | sort -t',' -k1,1) \
     > "${data_dir}/cassandra_order.csv"
 
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cassandra_order.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_order.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_order.csv"; fi
 
   # Change order-line, join Item
   join -a 1 -j1 5 -j2 1 -t ','\
@@ -74,14 +77,16 @@ function create_new_csv () {
     <(cat "${data_dir}/order-line.csv" | sort -t',' -k5,5) <(cat "${data_dir}/item.csv" |sort -t',' -k1,1)\
     > "${data_dir}/cassandra_order-line.csv"
 
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cassandra_order-line.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_order-line.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_order-line.csv"; fi
 
 
   # Set all other tables with cassandra_
   declare -a unchanged_file=("district.csv" "warehouse.csv")
   for file in "${unchanged_file[@]}"; do
-    cp "${data_dir}/${file}" "${data_dir}cassandra_${file}"
-    if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cassandra_${file}"; fi
+    cp "${data_dir}/${file}" "${data_dir}/cassandra_${file}"
+    if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_${file}" ) ]]; then
+      echo "Created: ${data_dir}/cassandra_${file}"; fi
   done
 
   # Cleanup
@@ -97,10 +102,12 @@ function append_null () {
 
 function extract_id () {
   awk -F "," '{printf("%d\n", $1) }' "${data_dir}/warehouse.csv" >>"${data_dir}/wid_list.csv"
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/wid_list.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/wid_list.csv" ) ]]; then
+    echo "Created: ${data_dir}/wid_list.csv"; fi
 
   awk -F "," '{print $1 "," $2 "," $3}' "${data_dir}/customer.csv" >>"${data_dir}/cid_list.csv"
-  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) ]]; then echo "Created: ${data_dir}/cid_list.csv"; fi
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cid_list.csv" ) ]]; then
+    echo "Created: ${data_dir}/cid_list.csv"; fi
 }
 
 ##########################################
