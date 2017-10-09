@@ -149,10 +149,10 @@ def create_column_families(current_session=session, parameters={}):
     cql_create_orderline = (
         "CREATE TABLE {keyspace}.orderline( "
             "w_id               INT, "
-            "d_id               TEXT, "
-            "o_id               TEXT, "
-            "ol_number          TEXT, "
-            "ol_i_id            TEXT, "
+            "d_id               INT, "
+            "o_id               INT, "
+            "ol_number          INT, "
+            "ol_i_id            INT, "
             "ol_i_name          TEXT, "
             "ol_delivery_d      TIMESTAMP, "
             "ol_amount          DOUBLE, "
@@ -329,30 +329,80 @@ def update_data(current_session=session, parameters={}):
         data_read = [row for row in reader]
         #cid_list in the format of: [[1, 1, 1], [1, 1, 2], [1, 1, 3]]
         cid_list = [[int(row[0]), int(row[1]), int(row[2])] for row in data_read]
-
+    # Prepared statements
+    cql_select_all_orderid = current_session.prepare(
+        """
+        SELECT o_id
+        FROM  {keyspace}.orders
+        WHERE w_id = ?
+        AND d_id = ?;
+        """.format(**default_params)
+        )
+    cql_select_all_orderline = current_session.prepare(
+        """
+        SELECT *
+        FROM  {keyspace}.orderline
+        WHERE w_id = ?
+        AND d_id = ?
+        AND o_id = ?;
+        """.format(**default_params)
+        )
+    cql_update_order_with_popular_item = current_session.prepare(
+        """
+        UPDATE {keyspace}.orders
+        SET popular_item_qty = ?, popular_item_name = ?,
+            popular_item_id = ?, ordered_items = ?
+        WHERE w_id = ?
+        AND d_id = ?
+        AND o_id = ?;
+        """.format(**default_params)
+        )
+    cql_select_one_orderid = current_session.prepare(
+        """
+        SELECT o_id
+        FROM  {keyspace}.orders
+        WHERE w_id = ?
+        AND d_id = ?
+        LIMIT 1;
+        """.format(**default_params)
+        )
+    cql_update_district_with_last_unfulfiled = current_session.prepare(
+        """
+        UPDATE {keyspace}.district
+        SET last_unfulfilled_order = ?
+        WHERE w_id = ?
+        AND d_id = ?;
+        """.format(**default_params)
+        )
+    cql_select_all_order_per_customer = current_session.prepare(
+        """
+        SELECT o_id
+        FROM  {keyspace}.orders
+        WHERE w_id = ?
+        AND d_id = ?
+        AND c_id = ? ALLOW FILTERING;
+        """.format(**default_params)
+        )
+    cql_update_customer_last_order = current_session.prepare(
+        """
+        UPDATE  {keyspace}.customer
+        SET last_order_id = ?
+        WHERE w_id = ?
+        AND d_id = ?
+        AND c_id = ?;
+        """.format(**default_params)
+    )
+    # For async_exec
+    def log_error(exc): raise Exception("Operation failed: %s", exc)
     ##fill order: popular_item info
+    print("Updating precalculated value for Order...")
     for w_id in wid_list:
         for d_id in range(1, 11):
-            orders = current_session.execute(
-                """
-                SELECT o_id
-                FROM  {keyspace}.orders
-                WHERE w_id = %s
-                AND d_id = %s;
-                """,
-                (w_id, d_id)
-            )
+            orders = current_session.execute(cql_select_all_orderid,
+                                             (w_id, d_id))
             for order in orders:
-                orderlines = current_session.execute(
-                    """
-                    SELECT * 
-                    FROM  {keyspace}.orderline
-                    WHERE w_id = %s
-                    AND d_id = %s
-                    AND o_id = %s;
-                    """,
-                    (w_id, d_id, order.o_id)
-                )
+                orderlines = current_session.execute(cql_select_all_orderline,
+                                                     (w_id, d_id, order.o_id))
                 popular_item_id = None
                 popular_item_qty = -1
                 popular_item_name = None
@@ -363,67 +413,30 @@ def update_data(current_session=session, parameters={}):
                         popular_item_name = orderline.ol_i_name
                         popular_item_id = orderline.ol_i_id
                     ordered_items.add(orderline.ol_i_id)
-                current_session.execute(
-                    """
-                    UPDATE  {keyspace}.order
-                        SET popular_item_qty = %s AND popular_item_name = %s AND popular_item_id = %s AND ordered_items = %s
-                        WHERE w_id = %s 
-                        AND d_id = %s
-                        AND o_id = %s;
-                    """,
-                    (popular_item_qty, popular_item_name, popular_item_id, ordered_items, w_id, d_id, order.o_id)
-                )
+                future = current_session.execute_async(cql_update_order_with_popular_item, (popular_item_qty, popular_item_name,                                        popular_item_id, ordered_items, w_id, d_id, order.o_id))
+                future.add_errback(log_error, cql_update_order_with_popular_item)
 
     ##fill district: last_unfulfilled_id
+    # TODO: Check with yuxin
+    print("Updating precalculated value for District...")
     for w_id in wid_list:
         for d_id in range(1, 11):
-            orders = current_session.execute(
-                """
-                SELECT o_id
-                FROM  {keyspace}.orders
-                WHERE w_id = %s
-                AND d_id = %s
-                LIMIT 1;
-                """,
-                (w_id, d_id)
-            )
+            orders = current_session.execute(cql_select_one_orderid,
+                                            (w_id, d_id))
             if len(orders) == 0:
                 continue
-            current_session.execute(
-                """
-                UPDATE  {keyspace}.district
-                    SET last_unfulfilled_order = %s
-                    WHERE w_id = %s 
-                    AND d_id = %s;
-                """,
-                (orders[0].o_id, w_id, d_id)
-            )
-
+            current_session.execute(cql_update_district_with_last_unfulfiled,
+                                    (orders[0].o_id, w_id, d_id))
     ##fill customer: last_order_id
+    print("Updating precalculated value for Customer...")
     for customer in cid_list:
-        orders = current_session.execute(
-            """
-            SELECT o_id
-            FROM  {keyspace}.orders
-            WHERE w_id = %s
-            AND d_id = %s
-            AND c_id = %s;
-            """,
-            (customer[0], customer[1], customer[2])
-        )
+        orders = current_session.execute(cql_select_all_order_per_customer,
+                                         (customer[0], customer[1], customer[2]))
         if len(orders) == 0:
             continue
         last_order_id = orders[len(orders) - 1].o_id
-        current_session.execute(
-            """
-            UPDATE  {keyspace}.customer
-                SET last_order_id = %s
-                WHERE w_id = %s 
-                AND d_id = %s
-                AND c_id = %s;
-            """,
-            (last_order_id, customer[0], customer[1], customer[2])
-        )
+        current_session.execute(cql_update_customer_last_order,
+                                (last_order_id, customer[0], customer[1], customer[2]))
 
 def cleanup(current_session=session, parameters={}):
     "Clean up by tearing down keyspace"
@@ -435,6 +448,8 @@ def cleanup(current_session=session, parameters={}):
     current_session.execute(cql_drop_keyspace)
 
 if __name__ == '__main__':
+    import time
+    start = time.time()
     cleanup()
     verify_cql_path()
     verify_csv_files()
@@ -443,3 +458,5 @@ if __name__ == '__main__':
     create_column_families()
     load_data()
     update_data()
+    end = time.time()
+    print("Took: {}s".format(end - start))
