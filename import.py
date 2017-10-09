@@ -310,16 +310,21 @@ def load_data(current_session=session, parameters={}):
     for cql_command in list_of_copy_command:
         subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_command])
 
-def update_data(current_session=session):
+def update_data(current_session=session, parameters={}):
+    default_params = default_parameters.copy()
+    default_params.update(parameters)
+    # csv files to refer
+    wid_csv = os.path.join(os.path.sep, data_directory, "wid_list.csv")
+    cid_csv = os.path.join(os.path.sep, data_directory, "cid_list.csv")
     #read w_id from csv into list
-    with open('wid_list.csv', 'r') as fp_w:
+    with open(wid_csv, 'r') as fp_w:
         reader = csv.reader(fp_w, delimiter='\n')
         data_read = [row for row in reader]
         data_list = [row[0] for row in data_read]
         #wid_list in the format of: [1, 2, 3]
         wid_list = [int(row) for row in data_list]
     #read customer_id from csv into list
-    with open('cid_list.csv', 'r') as fp_c:
+    with open(cid_csv, 'r') as fp_c:
         reader = csv.reader(fp_c, delimiter=',')
         data_read = [row for row in reader]
         #cid_list in the format of: [[1, 1, 1], [1, 1, 2], [1, 1, 3]]
@@ -437,3 +442,4 @@ if __name__ == '__main__':
     set_consistency()
     create_column_families()
     load_data()
+    update_data()
