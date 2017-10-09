@@ -13,7 +13,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     cql_select_customer = (
         """
         SELECT c_last, c_first, c_middle, c_credit, c_discount
-        FROM customer
+        FROM {keyspace}.customer
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
@@ -30,7 +30,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     cql_select_warehouse = (
         """
         SELECT w_tax
-        FROM warehouse
+        FROM {keyspace}.warehouse
         WHERE w_id = %(w_id)s
         """,
         {'w_id': w_id}
@@ -40,7 +40,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     cql_select_district = (
         """
         SELECT d_tax, d_next_o_id
-        FROM district
+        FROM {keyspace}.district
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
@@ -52,7 +52,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # Update next available order number
     cql_update_order_number = (
         """
-        UPDATE district
+        UPDATE {keyspace}.district
         SET d_next_o_id = d_next_o_id + 1
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
@@ -74,7 +74,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     get_item_stock_stmt = session.prepare(
         """
         SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info, i_name, i_price
-        FROM stockByWarehouse
+        FROM {keyspace}.stock_by_warehouse
         WHERE w_id = ?
         AND i_id = ?
         """,
@@ -82,7 +82,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     )
     update_stock_stmt = session.prepare(
         """
-        UPDATE stockByWarehouse
+        UPDATE {keyspace}.stock_by_warehouse
         SET s_quantity = ?,
         s_ytd = ?,
         s_order_cnt = s_order_cnt + 1
@@ -94,7 +94,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # TODO: check if this prepared statement is correct
     create_ol_stmt = session.prepare(
         """
-        INSERT INTO orderline
+        INSERT INTO {keyspace}.orderline
         (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
         VALUES
         ?
@@ -166,7 +166,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     cql_create_order = (
         """
-        INSERT INTO orders
+        INSERT INTO {keyspace}.orders
         (w_id, d_id, o_id, c_id, 
             o_ol_cnt, o_all_local, o_entry_d, 
             c_first, c_middle, c_last, 
@@ -205,7 +205,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     cql_select_customer = (
         """
         SELECT *
-        FROM customer
+        FROM {keyspace}.customer
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
@@ -220,7 +220,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     c_ytd_payment += payment
     current_session.execute(
         """
-        UPDATE customer
+        UPDATE {keyspace}.customer
         SET c_balance = %(c_balance)s,
         c_ytd_payment = %(c_ytd_payment)s,
         c_payment_cnt = c_payment_cnt + 1
@@ -234,7 +234,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     cql_select_warehouse = (
         """
         SELECT *
-        FROM warehouse
+        FROM {keyspace}.warehouse
         WHERE w_id = %(w_id)s
         """,
         {'w_id': c_w_id}
@@ -245,7 +245,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     w_ytd += payment
     current_session.execute(
         """
-        UPDATE warehouse
+        UPDATE {keyspace}.warehouse
         SET w_ytd = %(w_ytd)s
         WHERE w_id = %(w_id)s
         """,
@@ -255,7 +255,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     cql_select_district = (
         """
         SELECT *
-        FROM district
+        FROM {keyspace}.district
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
@@ -267,7 +267,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     d_ytd += payment
     current_session.execute(
         """
-        UPDATE district
+        UPDATE {keyspace}.district
         SET d_ytd = %(d_ytd)s
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
@@ -300,7 +300,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     }
     cql_select_order = (
         "SELECT w_id, d_id, o_id,ordered_items"
-        "FROM orders "
+        "FROM {keyspace}.orders "
         "WHERE w_id = %(w_id)s AND d_id = %(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
@@ -313,7 +313,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     parameters["all_item_id"]=all_item_id
     cql_select_order = (
         "SELECT w_id, i_id, i_name"
-        "FROM stockbywarehouse "
+        "FROM {keyspace}.stock_by_warehouse "
         "WHERE w_id = %(w_id)s AND i_id IN %(d_id)s AND s_quantitiy < %(T)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
@@ -334,7 +334,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     cql_select_order = (
         "SELECT w_id, d_id, o_id, o_entry_d, c_first, c_middle, c_last, "
         "popular_item_id, popular_item_name, popular_item_qty, ordered_items "
-        "FROM orders "
+        "FROM {keyspace}.orders "
         "WHERE w_id %(w_id)s AND d_id %(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
@@ -357,7 +357,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
 def top_balance_transaction(current_session=session):
     cql_select_customerbybalance = (
         "SELECT c_first, c_middle, c_last, c_balance, w_name, d_name "
-        "FROM customerByBalance"
+        "FROM {keyspace}.customerByBalance"
         "ORDER BY c_balance DESC "
         "LIMIT 10"
     )
