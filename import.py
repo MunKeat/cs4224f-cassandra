@@ -226,12 +226,12 @@ def create_column_families(current_session=session, parameters={}):
         ") WITH CLUSTERING ORDER BY (i_id DESC); "
         ).format(**default_params)
     cql_create_customerbybalance = (
-        "CREATE MATERIALISED VIEW {keyspace}.customer_by_warehouse AS"
+        "CREATE MATERIALIZED VIEW {keyspace}.customer_by_warehouse AS "
             "SELECT * FROM {keyspace}.customer "
             "WHERE w_id IS NOT NULL and d_id IS NOT NULL and "
                 "c_id IS NOT NULL and c_balance IS NOT NULL "
             "PRIMARY KEY ((w_id), d_id, c_id, c_balance) "
-            "WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC, c_balance DESC )"
+            "WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC, c_balance DESC)"
         "; "
         ).format(**default_params)
     current_session.execute(cql_create_customer)
@@ -240,7 +240,7 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_district)
     current_session.execute(cql_create_order)
     current_session.execute(cql_create_stockbywarehouse)
-    # current_session.execute(cql_create_customerbybalance)
+    current_session.execute(cql_create_customerbybalance)
 
 def load_data(current_session=session, parameters={}):
     "Upload csv files"
