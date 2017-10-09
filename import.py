@@ -1,6 +1,8 @@
 import csv
 import os
+import re
 import subprocess
+import sys
 
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
@@ -19,11 +21,52 @@ default_parameters = {
     "consistency": "one"
 }
 
-## TODO: Ensure it runs for all computer (i.e. no hardcoding of path)
-cqlsh_path = "/home/stuproj/cs4224f/cassandra/bin/cqlsh"
-
+cqlsh_path = None
 current_directory = os.path.dirname(os.path.realpath(__file__))
 data_directory = os.path.join(os.path.sep, current_directory, "data")
+
+def verify_cql_path(silent=False):
+    # Very bad practise: This is a hack
+    global cqlsh_path
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    # Get path of all cqlsh
+    cqlsh_paths=subprocess.Popen(["whereis","cqlsh"], stdout=subprocess.PIPE)
+    list_of_cqlsh_path = cqlsh_paths.stdout.readline().split()
+    list_of_cqlsh_path = [cqlsh for cqlsh in list_of_cqlsh_path if os.path.isfile(cqlsh)]
+    # Get the most plausible path first
+    r = re.compile(".*[\/]cassandra[\/]bin[\/]cqlsh$")
+    # Ensure that plassible path get sorted first
+    list_of_cqlsh_path.sort(key=lambda path: not r.match(path));
+    # If silent, will grab the most plausible path without prompt
+    if silent and list_of_cqlsh_path:
+        cqlsh_path = list_of_cqlsh_path[0]
+    # Question user
+    for path in list_of_cqlsh_path:
+        prompt = "Is `{}` your cqlsh's path? [y/n] > ".format(path)
+        cont = str(raw_input(prompt))
+        while cont.lower() not in (valid.keys()):
+            cont = str(raw_input("Please enter only [y/n] > "))
+        if valid[cont.lower()]:
+            cqlsh_path = path
+            return
+    print("It seems that none of the path are valid cqlsh path...")
+    print("Program will now terminate...")
+    sys.exit()
+
+def verify_csv_files():
+    csv_files = ["customer.csv", "district.csv", "order-line.csv", "order.csv",
+                 "stockitem.csv", "warehouse.csv"]
+    csv_files = [os.path.join(os.path.sep, data_directory, ("cassandra_" + file)) for file in csv_files]
+    massage_script = os.path.join(os.path.sep, current_directory, "massage.sh")
+    for csv_file in csv_files:
+        print("Checking if `{}` exist...".format(csv_file))
+        if not os.path.isfile(csv_file):
+            print("It appears that `{}` does not exist".format(csv_file))
+            # Allow for direct execution
+            subprocess.call(["chmod", "+x", massage_script])
+            subprocess.call([massage_script])
+            return
 
 def create_keyspace(current_session=session, parameters={}):
     "Create keyspace"
@@ -388,6 +431,8 @@ def cleanup(current_session=session, parameters={}):
 
 if __name__ == '__main__':
     cleanup()
+    verify_cql_path()
+    verify_csv_files()
     create_keyspace()
     set_consistency()
     create_column_families()
