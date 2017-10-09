@@ -457,6 +457,6 @@ if __name__ == '__main__':
     set_consistency()
     create_column_families()
     load_data()
-    update_data()
+    # update_data()
     end = time.time()
     print("Took: {}s".format(end - start))
