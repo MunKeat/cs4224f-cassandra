@@ -1,5 +1,6 @@
 import csv
 import os
+import pandas as pd
 import re
 import subprocess
 import sys
@@ -54,6 +55,7 @@ def verify_cql_path(silent=False):
     print("Program will now terminate...")
     sys.exit()
 
+# TODO: Remove check and run massage script regardless
 def verify_csv_files():
     csv_files = ["customer.csv", "district.csv", "order-line.csv", "order.csv",
                  "stockitem.csv", "warehouse.csv"]
@@ -241,6 +243,53 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_order)
     current_session.execute(cql_create_stockbywarehouse)
     current_session.execute(cql_create_customerbybalance)
+
+def update_csv_files(current_session=session, parameters={}):
+    default_params = default_parameters.copy()
+    default_params.update(parameters)
+    customer = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_customer.csv"),
+                           na_values='null', header=None, dtype=str)
+    customer.columns = ["w_id", "d_id", "c_id", "w_name", "w_street_1", "w_street_2", "w_tax",
+                        "d_name", "d_street_1", "d_street_2", "d_tax", "c_first", "c_middle", "c_last",
+                        "c_street_1", "c_street_2", "c_city", "c_state", "c_zip", "c_phone", "c_since",
+                        "c_credit", "c_credit_lim", "c_discount", "c_balance",
+                        "c_ytd_payment", "c_payment_cnt", "c_delivery_cnt", "c_data",
+                        "last_order_id", "last_order_date", "last_order_carrier"]
+    district = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_district.csv"),
+                           na_values='null', header=None, dtype=str)
+    district.columns = ["w_id", "d_id", "d_name", "d_street_1", "d_street_2", "d_city",
+                        "d_state", "d_zip", "d_tax", "d_ytd", "d_next_o_id",
+                        "last_unfulfilled_order"]
+    order = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_order.csv"),
+                         na_values='null', header=None, dtype=str)
+    order.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id", "o_ol_cnt", "o_all_local", "o_entry_d",
+                      "c_first", "c_middle", "c_last", "popular_item_id", "popular_item_name",
+                      "popular_item_qty", "ordered_items"]
+    orders = order.copy()
+    orderline = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_order-line.csv"),
+                            na_values='null', header=None, dtype=str)
+    orderline.columns = ["w_id", "d_id", "o_id", "ol_number", "ol_i_id", "ol_i_name",
+                         "ol_delivery_d", "ol_amount", "ol_supply_w_id", "ol_quantity", "ol_dist_info"]
+    # Processing Customer DataFrame
+    groupby_order = orders[orders.groupby(['w_id', 'd_id', 'c_id'])['o_entry_d'].transform(max) == orders['o_entry_d']]
+    groupby_order = groupby_order[['w_id', 'd_id', 'c_id', 'o_id', 'o_entry_d', 'o_carrier_id']]
+    customer.drop(["last_order_id", "last_order_date", "last_order_carrier"], axis=1, inplace=True)
+    customer = pd.merge(customer, groupby_order, on=['w_id', 'd_id', 'c_id'], how='left')
+    customer.rename(columns={'o_id': 'last_order_id', 'o_entry_d':
+                    'last_order_date', 'o_carrier_id': 'last_order_carrier'}, inplace=True)
+    customer.to_csv(os.path.join(os.path.sep, data_directory, "cassandra_customer.csv"),
+                    na_rep="null", header=False, index=False)
+    # Processing District DataFrame
+    unfulfiled_order = orders[(orders['o_carrier_id'].isnull())]
+    groupby_unfulfiled_order = unfulfiled_order[unfulfiled_order.groupby(['w_id', 'd_id'])['o_id'].transform(max) == unfulfiled_order['o_id']]
+    groupby_unfulfiled_order = groupby_unfulfiled_order[['w_id', 'd_id', 'o_id']]
+    district.drop(['last_unfulfilled_order'], axis=1, inplace=True)
+    district = pd.merge(district, groupby_unfulfiled_order, on=['w_id', 'd_id'], how='left')
+    district.rename(columns={'o_id': 'last_unfulfilled_order'}, inplace=True)
+    district.to_csv(os.path.join(os.path.sep, data_directory, "cassandra_district.csv"),
+                    na_rep="null", header=False, index=False)
+    # Processing Order DataFrame
+
 
 def load_data(current_session=session, parameters={}):
     "Upload csv files"
@@ -453,6 +502,7 @@ if __name__ == '__main__':
     cleanup()
     verify_cql_path()
     verify_csv_files()
+    update_csv_files()
     create_keyspace()
     set_consistency()
     create_column_families()
