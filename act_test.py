@@ -1,12 +1,11 @@
 from cassandra.cluster import Cluster
 import os
-import sys
 
-import subprocess
+from transactions import new_order_transaction, payment_transaction, stock_level_transaction,delivery_transaction,order_status_transaction, popular_item_transaction, top_balance_transaction
 
-from transactions import payment_transaction, stock_level_transaction, popular_item_transaction, top_balance_transaction, new_order_transaction
-from txn3 import txn3
-from txn4 import txn4
+
+cluster = Cluster(["192.168.48.244","192.168.48.245","192.168.48.246","192.168.48.247","192.168.48.248"])
+session = cluster.connect("warehouse")
 
 def act_test(act_file):
 	f=open(act_file)
@@ -25,9 +24,9 @@ def act_test(act_file):
 		elif para[0]=="P":
 			payment_transaction(c_w_id=int(para[1]), c_d_id=int(para[2]), c_id=int(para[3]), payment=float(para[4]), current_session=session)
 		elif para[0]=="D":
-			txn3(current_session=session, w_id=int(para[1]), carrier_id=int(para[2]))
+			delivery_transaction(current_session=session, w_id=int(para[1]), carrier_id=int(para[2]))
 		elif para[0]=="O":
-			txn4(current_session=session, c_w_id=int(para[1]), c_d_id=int(para[2]), c_id=int(para[3]))
+			order_status_transaction(current_session=session, c_w_id=int(para[1]), c_d_id=int(para[2]), c_id=int(para[3]))
 		elif para[0]=="S":
 			stock_level_transaction(w_id=int(para[1]),d_id=int(para[2]),T=int(para[3]), L=int(para[4]), current_session=session)
 		elif para[0]=="I":
