@@ -228,7 +228,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     customer = customers[0]
     c_balance = customer.c_balance
     c_ytd_payment = customer.c_ytd_payment
-    c_payment_counter = customer.c_payment_cnt
+    c_payment_cnt = customer.c_payment_cnt
     # Update customer
     c_balance -= payment
     c_ytd_payment += payment
@@ -390,7 +390,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
 
 # Current WIP - Not proven to work
 # Transaction 4
-def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
+def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     output = {}
     customer = current_session.execute(
         """
@@ -403,7 +403,7 @@ def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
         (c_w_id, c_d_id, c_id)
     )
     #1) out put customer information
-    if len(customer) != 1:
+    if not customer:
         return output
     output['c_first'] = customer[0].c_first
     output['c_middle'] = customer[0].c_middle
