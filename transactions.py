@@ -316,7 +316,8 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
             SELECT * 
             FROM  orders
             WHERE w_id = %s
-            AND d_id = %s;
+            AND d_id = %s
+            ORDER BY d_id, o_id ASC;
             """,
             (w_id, d_id)
         )
@@ -411,9 +412,29 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     output['c_last'] = customer[0].c_last
     output['c_balance'] = customer[0].c_balance
     #2) get customer's last order
-    output['o_id'] = customer[0].last_order_id
-    output['o_entry_d'] = customer[0].last_order_date
-    output['o_carrier_id'] = customer[0].last_order_carrier
+    orders = current_session.execute(
+        """
+        SELECT * 
+        FROM  orders
+        WHERE w_id = %s
+        AND d_id = %s;
+        """,
+        (c_w_id, c_d_id)
+    )
+    last_order_id = None
+    last_order_date = None
+    last_order_carrier = None
+    for order in orders:
+        if order.c_id == c_id:
+            last_order_id = order.o_id
+            last_order_date = order.o_entry_d
+            last_order_carrier = order.o_carrier_id
+            break
+    if last_order_id is None:
+        return output
+    output['o_id'] = last_order_id
+    output['o_entry_d'] = last_order_date
+    output['o_carrier_id'] = last_order_carrier
     #3) each item information
     if output['o_id'] is None:
         #customer does not have any order yet
