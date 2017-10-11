@@ -71,38 +71,40 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     isAllLocal = True
 
     # Prepared statements for order line transactions
-    s_dist_col_name = 's_dist_' + d_id
+    if (d_id == 10):
+        s_dist_col_name = 's_dist_info_' + d_id
+    elif (d_id < 10):
+        s_dist_col_name = 's_dist_info_0' + d_id
     get_item_stock_stmt = session.prepare(
         """
-        SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info, i_name, i_price
+        SELECT s_quantity, s_ytd, {} AS s_dist_info, s_order_cnt, s_remote_cnt, i_name, i_price
         FROM stock_by_warehouse
         WHERE w_id = ?
         AND i_id = ?
-        """,
-        {'s_dist': s_dist_col_name}
+        """.format(s_dist_col_name)
     )
     update_stock_stmt = session.prepare(
         """
         UPDATE stock_by_warehouse
         SET s_quantity = ?,
         s_ytd = ?,
-        s_order_cnt = s_order_cnt + 1
-        s_remote_cnt = s_remote_cnt + ?
+        s_order_cnt = ?
+        s_remote_cnt = ?
         WHERE w_id = ?
         AND i_id = ?
         """
     )
-    # TODO: check if this prepared statement is correct
     create_ol_stmt = session.prepare(
         """
         INSERT INTO orderline
         (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
         VALUES
-        ?
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
     )
     # Create order line for each item in the order
     for ol_number in range(0, M):
+        batch = BatchStatement()
         item = items[ol_number]
         ol_i_id = item[0]
         ol_supply_w_id = item[1]
@@ -115,6 +117,8 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_dist_info = item_stock.s_dist_info
         item_price = item_stock.i_price
         item_name = item_stock.i_name
+        old_order_cnt = item_stock.s_order_cnt
+        old_remote_cnt = item_stock.s_remote_cnt
         item_amount = ol_quantity * item_price
         total_amount += item_amount
         # Update stock
@@ -125,7 +129,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         isRemote = (w_id!=ol_supply_w_id)
         if isRemote:
             isAllLocal = False
-        current_session.execute(update_stock_stmt, [adjusted_qty, stock_ytd_adjusted, isRemote, ol_supply_w_id, ol_i_id])
+        new_order_cnt = old_order_cnt + 1
+        new_remote_cnt = old_remote_cnt + isRemote
+        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, new_order_cnt, new_remote_cnt, ol_supply_w_id, ol_i_id))
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
@@ -136,8 +142,10 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
             popular_item_name.append(item_name)
 
         # Create a new order line
-        ol_info = [w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info]
-        current_session.execute(create_ol_stmt, ol_info)
+        ol_info = (w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
+        batch.add(create_ol_stmt, ol_info)
+        # Execute batch operations
+        session.execute(batch)
         # Update other info for output
         ordered_item = {
                 'item_number': ol_i_id, 
