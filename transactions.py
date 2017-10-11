@@ -73,9 +73,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
 
     # Prepared statements for order line transactions
     if (d_id == 10):
-        s_dist_col_name = 's_dist_info_' + d_id
+        s_dist_col_name = 's_dist_info_' + str(d_id)
     elif (d_id < 10):
-        s_dist_col_name = 's_dist_info_0' + d_id
+        s_dist_col_name = 's_dist_info_0' + str(d_id)
     get_item_stock_stmt = session.prepare(
         """
         SELECT s_quantity, s_ytd, {} AS s_dist_info, s_order_cnt, s_remote_cnt, i_name, i_price
@@ -89,7 +89,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         UPDATE stock_by_warehouse
         SET s_quantity = ?,
         s_ytd = ?,
-        s_order_cnt = ?
+        s_order_cnt = ?,
         s_remote_cnt = ?
         WHERE w_id = ?
         AND i_id = ?
@@ -130,7 +130,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         isRemote = (w_id!=ol_supply_w_id)
         if isRemote:
             isAllLocal = False
-        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, s_order_cnt + 1, s_remote_cnt + isRemote, ol_supply_w_id, ol_i_id))
+        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, s_order_cnt + 1, s_remote_cnt + int(isRemote), ol_supply_w_id, ol_i_id))
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
@@ -167,7 +167,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         "o_id": order_number,
         "c_id": c_id,
         "o_ol_cnt": M,
-        "o_all_loca": int(isAllLocal),
+        "o_all_local": int(isAllLocal),
         "o_entry_d": o_entry_d,
         "c_first": c_first,
         "c_middle": c_middle,
@@ -194,6 +194,18 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         """
     )
     current_session.execute(cql_create_order, order_info)
+    # Update last order of customer
+    current_session.execute(
+        """
+        UPDATE customer
+        SET last_order_id = %(last_order_id)s,
+        last_order_date = %(last_order_date)s
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        AND c_id = %(c_id)s
+        """,
+        ('last_order_id': order_number, 'last_order_date': o_entry_d, 'w_id': w_id, 'd_id': d_id, 'c_id': c_id)
+    )
 
     output = {
         'w_id': w_id,
