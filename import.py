@@ -196,7 +196,7 @@ def create_column_families(current_session=session, parameters={}):
             "c_last                     TEXT, "
             "popular_item_id            LIST<INT>, "
             "popular_item_name          LIST<TEXT>, "
-            "popular_item_qty           LIST<INT>, "
+            "popular_item_qty           INT, "
             "ordered_items              SET<INT>, "
             "PRIMARY KEY ((w_id), d_id,o_id) "
         ")WITH CLUSTERING ORDER BY (d_id DESC, o_id ASC); "
@@ -228,12 +228,12 @@ def create_column_families(current_session=session, parameters={}):
         ") WITH CLUSTERING ORDER BY (i_id DESC); "
         ).format(**default_params)
     cql_create_customerbybalance = (
-        "CREATE MATERIALIZED VIEW {keyspace}.customer_by_warehouse AS "
+        "CREATE MATERIALIZED VIEW {keyspace}.customer_by_balance AS "
             "SELECT * FROM {keyspace}.customer "
             "WHERE w_id IS NOT NULL and d_id IS NOT NULL and "
                 "c_id IS NOT NULL and c_balance IS NOT NULL "
-            "PRIMARY KEY ((w_id), d_id, c_id, c_balance) "
-            "WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC, c_balance DESC)"
+            "PRIMARY KEY ((w_id), c_balance, d_id, c_id) "
+            "WITH CLUSTERING ORDER BY (c_balance DESC, d_id DESC, c_id DESC)"
         "; "
         ).format(**default_params)
     current_session.execute(cql_create_customer)
@@ -343,8 +343,8 @@ def helper_update_orders_csv(parameters={}):
     groupby_popular_productline_id.rename(columns={'to_list': 'popular_item_id'}, inplace=True)
     groupby_popular_productline_name = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_i_name'].agg([to_list]).reset_index()
     groupby_popular_productline_name.rename(columns={'to_list': 'popular_item_name'}, inplace=True)
-    groupby_popular_productline_quantity = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_quantity'].agg([to_list]).reset_index()
-    groupby_popular_productline_quantity.rename(columns={'to_list': 'popular_item_qty'}, inplace=True)
+    groupby_popular_productline_quantity = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_quantity'].agg([max]).reset_index()
+    groupby_popular_productline_quantity.rename(columns={'max': 'popular_item_qty'}, inplace=True)
     orders.drop(["popular_item_id", "popular_item_name", "popular_item_qty", "ordered_items"],
                 axis=1, inplace=True)
     orders = pd.merge(orders, groupby_popular_productline_id, on=['w_id', 'd_id', 'o_id'], how='left')
