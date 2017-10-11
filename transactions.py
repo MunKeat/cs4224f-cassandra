@@ -117,8 +117,8 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_dist_info = item_stock.s_dist_info
         item_price = item_stock.i_price
         item_name = item_stock.i_name
-        old_order_cnt = item_stock.s_order_cnt
-        old_remote_cnt = item_stock.s_remote_cnt
+        s_order_cnt = item_stock.s_order_cnt
+        s_remote_cnt = item_stock.s_remote_cnt
         item_amount = ol_quantity * item_price
         total_amount += item_amount
         # Update stock
@@ -129,9 +129,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         isRemote = (w_id!=ol_supply_w_id)
         if isRemote:
             isAllLocal = False
-        new_order_cnt = old_order_cnt + 1
-        new_remote_cnt = old_remote_cnt + isRemote
-        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, new_order_cnt, new_remote_cnt, ol_supply_w_id, ol_i_id))
+        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, s_order_cnt + 1, s_remote_cnt + isRemote, ol_supply_w_id, ol_i_id))
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
@@ -230,6 +228,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     customer = customers[0]
     c_balance = customer.c_balance
     c_ytd_payment = customer.c_ytd_payment
+    c_payment_counter = customer.c_payment_cnt
     # Update customer
     c_balance -= payment
     c_ytd_payment += payment
@@ -238,12 +237,12 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         UPDATE customer
         SET c_balance = %(c_balance)s,
         c_ytd_payment = %(c_ytd_payment)s,
-        c_payment_cnt = c_payment_cnt + 1
+        c_payment_cnt = %(c_payment_cnt)s
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
-        {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
+        {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment,'c_payment_cnt': c_payment_cnt + 1, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
     )
     # Retrieve warehouse information
     warehouses = current_session.execute(
