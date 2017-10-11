@@ -380,7 +380,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
         current_session.execute(
                 """
                 UPDATE  customer
-                    SET c_balance = %s AND c_delivery_cnt = %s
+                    SET c_balance = %s, c_delivery_cnt = %s
                     WHERE w_id = %s 
                     AND d_id = %s
                     AND c_id = %s;
