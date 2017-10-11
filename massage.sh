@@ -37,7 +37,8 @@ function create_new_csv () {
   join -a 1 -j1 2 -j2 1 -t ',' \
        -o 1.1 2.1 2.2 2.3 2.4 2.5 \
           1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 -e "null"\
-       "${data_dir}/stock.csv" "${data_dir}/item.csv" > "${data_dir}/cassandra_stockitem.csv"
+       <(cat "${data_dir}/stock.csv" | sort -t',' -k2,2) \
+       <(cat "${data_dir}/item.csv"|sort -t',' -k1,1) > "${data_dir}/cassandra_stockitem.csv"
 
   if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_stockitem.csv" ) ]]; then
     echo "Created: ${data_dir}/cassandra_stockitem.csv"; fi
