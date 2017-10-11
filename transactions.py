@@ -451,7 +451,7 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     output['items'] = items
     return output
 
-# Current WIP - Not proven to work
+# Current WIP 
 # Transaction 5
 def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     parameters = {
@@ -461,29 +461,30 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
         "l": L
     }
     cql_select_order = (
-        "SELECT w_id, d_id, o_id,ordered_items"
+        "SELECT w_id, d_id, o_id,ordered_items "
         "FROM orders "
         "WHERE w_id = %(w_id)s AND d_id = %(d_id)s "
-        "ORDER BY o_id DESC "
+        "ORDER BY d_id,o_id DESC "
         "LIMIT %(l)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
-    number_of_entries = len(rows)
     all_item_id = set()
     for row in rows:
         all_item_id = all_item_id | row.ordered_items
-    parameters["all_item_id"]=all_item_id
+    parameters["all_item_id"]=str(tuple(all_item_id))
     cql_select_order = (
-        "SELECT w_id, i_id, i_name"
+        "SELECT w_id, i_id, i_name "
         "FROM stock_by_warehouse "
-        "WHERE w_id = %(w_id)s AND i_id IN %(d_id)s AND s_quantitiy < %(T)s"
+        "WHERE w_id = %(w_id)s AND i_id IN "+parameters["all_item_id"]+ " AND s_quantity < %(T)s "
+        "ALLOW FILTERING"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
     
-    #output = list(row.i_name for row in rows)
-    #output = [item, float(item_count) / number_of_entries for item, item_count in zip(distinct_popular_item, raw_count)]
-    # TODO: Process rows to output json
-
+    st_count=0
+    for row in rows:
+        st_count+=1
+    return st_count
+    
 
 # Current WIP - Not proven to work
 # Transaction 6
@@ -498,7 +499,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
         "SELECT w_id, d_id, o_id, o_entry_d, c_first, c_middle, c_last, "
         "popular_item_id, popular_item_name, popular_item_qty, ordered_items "
         "FROM orders "
-        "WHERE w_id %(w_id)s AND d_id %(d_id)s "
+        "WHERE w_id=%(w_id)s AND d_id=%(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
     )
