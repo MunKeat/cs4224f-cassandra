@@ -366,8 +366,8 @@ def helper_update_orders_csv(parameters={}):
     pass
 
 def load_data(current_session=session, parameters={}):
-    params = default_parameters.copy()
-    params.update({"data_dir": data_directory, "null_rep": "null"})
+    default_params = default_parameters.copy()
+    default_params.update({"data_dir": data_directory, "null_rep": "null"})
     default_params.update(parameters)
     cql_copy_customer = (
         "COPY {keyspace}.customer ("
