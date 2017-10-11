@@ -6,6 +6,7 @@ session = cluster.connect()
 
 # Current WIP - Not proven to work
 # assuming items is a list of items in the order
+# Transaction 1
 def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     num_of_items = M
 
@@ -200,6 +201,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     return output
 
 # Current WIP - Not proven to work
+# Transaction 2
 def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     # Retrieve customer information
     cql_select_customer = (
@@ -291,6 +293,147 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     return output
 
 # Current WIP - Not proven to work
+# Transaction 3
+def delivery_transaction(w_id, carrier_id, current_session=session):
+    #TODO: validate carrier_id and w_id
+    districts = current_session.execute(
+        """
+        SELECT * 
+        FROM  {keyspace}.district
+        WHERE w_id = %s;
+        """,
+        [w_id]
+    )
+    for district in districts:
+        # a)
+        orders = current_session.execute(
+            """
+            SELECT * 
+            FROM  {keyspace}.orders
+            WHERE w_id = %s
+            AND d_id = %s;
+            """,
+            (w_id, district.d_id)
+        )
+        o_id = None
+        c_id = None
+        for order in orders:
+            if order.o_carrier_id is None:
+                o_id = order.o_id
+                c_id = order.c_id
+                break
+        if o_id is None:
+            break
+        # b)
+        current_session.execute(
+                    """
+                    UPDATE  {keyspace}.orders
+                        SET o_carrier_id = %s
+                        WHERE w_id = %s 
+                        AND d_id = %s
+                        AND o_id = %s;
+                    """,
+                    (carrier_id, w_id, district.d_id, o_id)
+        )
+        # C) update all order line: need to read order line number & amount first
+        order_amt = 0.0
+        orderlines = current_session.execute(
+            """
+            SELECT * 
+            FROM  {keyspace}.orderline
+            WHERE w_id = %s
+            AND d_id = %s
+            AND o_id = %s;
+            """,
+            (w_id, district.d_id, o_id)
+        )
+        timestamp = datetime.utcnow()
+        for orderline in orderlines:
+            order_amt += orderline.ol_amount
+            current_session.execute(
+                """
+                UPDATE  {keyspace}.orderline
+                    SET ol_delivery_d = %s
+                    WHERE w_id = %s 
+                    AND d_id = %s
+                    AND o_id = %s
+                    AND ol_number = %s;
+                """,
+                (timestamp, w_id, district.d_id, o_id, orderline.ol_number)
+            )
+        # d) update customer table
+        customers = current_session.execute(
+            """
+            SELECT * 
+            FROM  {keyspace}.customer
+            WHERE w_id = %s
+            AND d_id = %s
+            AND o_id = %s
+            AND c_id = %s;
+            """,
+            (w_id, district.d_id, o_id, c_id)
+        )
+        customer = customers[0]
+        current_session.execute(
+                """
+                UPDATE  {keyspace}.customer
+                    SET c_balance = %s AND ol_amount = %s
+                    WHERE w_id = %s 
+                    AND d_id = %s
+                    AND c_id = %s;
+                """,
+                (customer.c_balance + order_amt, w_id, district.d_id, c_id)
+        )
+
+# Current WIP - Not proven to work
+# Transaction 4
+def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
+    output = {}
+    customer = current_session.execute(
+        """
+        SELECT * 
+        FROM  {keyspace}.customer
+        WHERE c_w_id = %s
+        AND c_d_id = %s
+        AND c_id = %s;
+        """,
+        (c_w_id, c_d_id, c_id)
+    )
+    #1) out put customer information
+    if len(customer) != 1:
+        return output
+    output['c_first'] = customer[0].c_first
+    output['c_middle'] = customer[0].c_middle
+    output['c_last'] = customer[0].c_last
+    output['c_balance'] = customer[0].c_balance
+    #2) get customer's last order
+    output['o_id'] = customer[0].last_oid
+    output['o_entry_d'] = customer[0].last_o_entry_d
+    output['o_carrier_id'] = customer[0].last_o_carrier_id
+    #3) each item information
+    orderlines = current_session.execute(
+        """
+        SELECT * 
+        FROM  {keyspace}.orderline
+        WHERE w_id = %s
+        AND d_id = %s
+        AND o_id = %s;
+        """,
+        (c_w_id, c_d_id, output['o_id'])
+    )
+    items = {}
+    for orderline in orderlines:
+        items[orderline.ol_number] = {}
+        items[orderline.ol_number]['ol_i_id'] = orderline.ol_i_id
+        items[orderline.ol_number]['ol_supply_w_id'] = orderline.ol_supply_w_id
+        items[orderline.ol_number]['ol_quantity'] = orderline.ol_quantity
+        items[orderline.ol_number]['ol_amount'] = orderline.ol_amount
+        items[orderline.ol_number]['ol_delivery_id'] = orderline.ol_delivery_id
+    output['items'] = items
+    return output
+
+# Current WIP - Not proven to work
+# Transaction 5
 def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     parameters = {
         "w_id": w_id,
@@ -324,6 +467,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
 
 
 # Current WIP - Not proven to work
+# Transaction 6
 def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     parameters = {
         "i": i,
@@ -354,6 +498,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
 
 
 # Current WIP - Not proven to work
+# Transaction 7
 def top_balance_transaction(current_session=session):
     cql_select_customerbybalance = (
         "SELECT c_first, c_middle, c_last, c_balance, w_name, d_name "
