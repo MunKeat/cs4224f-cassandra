@@ -198,8 +198,8 @@ def create_column_families(current_session=session, parameters={}):
             "popular_item_name          LIST<TEXT>, "
             "popular_item_qty           INT, "
             "ordered_items              SET<INT>, "
-            "PRIMARY KEY ((w_id), d_id,o_id) "
-        ")WITH CLUSTERING ORDER BY (d_id DESC, o_id ASC); "
+            "PRIMARY KEY ((w_id), d_id, o_id) "
+        ")WITH CLUSTERING ORDER BY (d_id DESC, o_id DESC); "
         ).format(**default_params)
     cql_create_stockbywarehouse = (
         "CREATE TABLE {keyspace}.stock_by_warehouse( "

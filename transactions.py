@@ -204,8 +204,10 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
-        ('last_order_id': order_number, 'last_order_date': o_entry_d, 'w_id': w_id, 'd_id': d_id, 'c_id': c_id)
+        {'last_order_id': order_number, 'last_order_date': o_entry_d, 'w_id': w_id, 'd_id': d_id, 'c_id': c_id}
     )
+    batch.add()
+    session.execute(batch)
 
     output = {
         'w_id': w_id,
@@ -464,7 +466,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
         "SELECT w_id, d_id, o_id,ordered_items "
         "FROM orders "
         "WHERE w_id = %(w_id)s AND d_id = %(d_id)s "
-        "ORDER BY d_id,o_id DESC "
+        #"ORDER BY d_id,o_id DESC "
         "LIMIT %(l)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
@@ -500,7 +502,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
         "popular_item_id, popular_item_name, popular_item_qty, ordered_items "
         "FROM orders "
         "WHERE w_id=%(w_id)s AND d_id=%(d_id)s "
-        "ORDER BY o_id DESC "
+        #"ORDER BY o_id DESC "
         "LIMIT %(l)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
