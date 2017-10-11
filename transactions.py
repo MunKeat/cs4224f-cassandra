@@ -503,8 +503,6 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     #output = [item, float(item_count) / number_of_entries for item, item_count in zip(distinct_popular_item, raw_count)]
     # TODO: Process rows to output json
 
-
-# Current WIP - Not proven to work
 # Transaction 7
 def top_balance_transaction(current_session=session):
 
