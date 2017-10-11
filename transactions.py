@@ -301,15 +301,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
 # Transaction 3
 def delivery_transaction(w_id, carrier_id, current_session=session):
     #TODO: validate carrier_id and w_id
-    districts = current_session.execute(
-        """
-        SELECT * 
-        FROM  district
-        WHERE w_id = %s;
-        """,
-        (w_id,)
-    )
-    for district in districts:
+    for d_id in range(1, 11):
         # a)
         orders = current_session.execute(
             """
@@ -318,7 +310,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
             WHERE w_id = %s
             AND d_id = %s;
             """,
-            (w_id, district.d_id)
+            (w_id, d_id)
         )
         o_id = None
         c_id = None
@@ -328,7 +320,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
                 c_id = order.c_id
                 break
         if o_id is None:
-            break
+            continue
         # b)
         current_session.execute(
                     """
@@ -338,7 +330,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
                         AND d_id = %s
                         AND o_id = %s;
                     """,
-                    (carrier_id, w_id, district.d_id, o_id)
+                    (carrier_id, w_id, d_id, o_id)
         )
         # C) update all order line: need to read order line number & amount first
         order_amt = 0.0
@@ -350,7 +342,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
             AND d_id = %s
             AND o_id = %s;
             """,
-            (w_id, district.d_id, o_id)
+            (w_id, d_id, o_id)
         )
         timestamp = datetime.utcnow()
         for orderline in orderlines:
@@ -364,7 +356,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
                     AND o_id = %s
                     AND ol_number = %s;
                 """,
-                (timestamp, w_id, district.d_id, o_id, orderline.ol_number)
+                (timestamp, w_id, d_id, o_id, orderline.ol_number)
             )
         # d) update customer table
         customers = current_session.execute(
@@ -375,18 +367,18 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
             AND d_id = %s
             AND c_id = %s;
             """,
-            (w_id, district.d_id, c_id)
+            (w_id, d_id, c_id)
         )
         customer = customers[0]
         current_session.execute(
                 """
                 UPDATE  customer
-                    SET c_balance = %s AND ol_amount = %s
+                    SET c_balance = %s AND c_delivery_cnt = %s
                     WHERE w_id = %s 
                     AND d_id = %s
                     AND c_id = %s;
                 """,
-                (customer.c_balance + order_amt, w_id, district.d_id, c_id)
+                (customer.c_balance + order_amt, customer.c_delivery_cnt + 1, w_id, d_id, c_id)
         )
 
 # Current WIP - Not proven to work
