@@ -317,6 +317,7 @@ def helper_update_district_csv(parameters={}):
     return
 
 def to_set(x):
+    # return str(list(set(x))).replace('[', '}').replace(']','}')
     return str(set(x))
 
 def to_list(x):
@@ -326,7 +327,6 @@ def helper_update_orders_csv(parameters={}):
     params = default_parameters.copy()
     params.update(parameters)
     orders = helper_read_csv("cassandra_order.csv")
-    print("Order Original:", orders.shape)
     orders.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id",
                      "o_ol_cnt", "o_all_local", "o_entry_d", "c_first",
                      "c_middle", "c_last", "popular_item_id",
@@ -352,18 +352,12 @@ def helper_update_orders_csv(parameters={}):
     orders = pd.merge(orders, groupby_popular_productline_name, on=['w_id', 'd_id', 'o_id'], how='left')
     orders = pd.merge(orders, groupby_popular_productline_quantity, on=['w_id', 'd_id', 'o_id'], how='left')
     orderlines = orderline.copy()
-    print("Join (3) Order: ", orders.shape)
-    print("Orderline col Prior to Group By:", orderlines.shape)
     groupby_orderline = orderlines.groupby(['w_id', 'd_id', 'o_id'])['ol_i_id'].agg([to_set]).reset_index()
     groupby_orderline.rename(columns={'to_set': 'ordered_items'},
                              inplace=True)
-    print("Orderline col Grouped By:", groupby_orderline.shape)
     groupby_orderline = groupby_orderline[['w_id', 'd_id', 'o_id', 'ordered_items']]
     orders = pd.merge(orders, groupby_orderline, on=['w_id', 'd_id', 'o_id'], how='left')
-    print("Order grouped II:", orders.shape)
     helper_write_csv(orders, "cassandra_order.csv")
-    # Get all items ordered
-    pass
 
 def load_data(current_session=session, parameters={}):
     default_params = default_parameters.copy()
