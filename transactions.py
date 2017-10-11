@@ -507,11 +507,28 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
 # Current WIP - Not proven to work
 # Transaction 7
 def top_balance_transaction(current_session=session):
-    cql_select_customerbybalance = (
-        "SELECT c_first, c_middle, c_last, c_balance, w_name, d_name "
-        "FROM customerByBalance"
-        "ORDER BY c_balance DESC "
-        "LIMIT 10"
-    )
-    rows = current_session.execute(cql_select_customerbybalance)
-    # TODO: Process rows to output json
+
+    # TODO: Move this out
+    list_of_distinct_wid = []
+    distinct_wid = session.execute("SELECT DISTINCT w_id FROM warehouse")
+    for w_id in distinct_wid:
+        list_of_distinct_wid.append(w_id)
+
+    highest_balance = []
+    for id in list_of_distinct_wid:
+        cql_select_customerbybalance = (
+            "SELECT c_first, c_middle, c_last, c_balance, w_name, d_name "
+            "FROM customer_by_balance "
+            "WHERE w_id = {} "
+            "ORDER BY c_balance DESC "
+            "LIMIT 10".format(id)
+        )
+        rows = current_session.execute(cql_select_customerbybalance)
+        for row in rows:
+            highest_balance.append(row)
+    # highest_balance.sort(key=lambda x: float(x.c_balance), reverse=True)
+    highest_balance = sorted(highest_balance, key=lambda x:float(x.c_balance), reverse=True)
+    highest_balance = highest_balance[:10]
+    for customer in highest_balance:
+        # TODO: Print as OUTPUT
+        print(customer)
