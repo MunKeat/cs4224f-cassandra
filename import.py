@@ -10,8 +10,8 @@ from cassandra.auth import PlainTextAuthProvider
 
 auth_provider = PlainTextAuthProvider(
         username='cs4224f', password='tE3w8JyB')
-# cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'] ,auth_provider=auth_provider)
-cluster = Cluster()
+cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'] ,auth_provider=auth_provider)
+# cluster = Cluster()
 session = cluster.connect()
 
 ## TODO: Create immutable dict
@@ -90,7 +90,7 @@ def set_consistency(current_session=session, parameters={}):
     default_params.update(parameters)
     cql_set_consistency = "CONSISTENCY {consistency}".format(**default_params)
     # Execute set consistency
-    subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_set_consistency])
+    subprocess.call([cqlsh_path,"192.168.48.244","-e", cql_set_consistency])
 
 def create_column_families(current_session=session, parameters={}):
     "Creates Column Families and Materialised View(s) using CQL"
@@ -424,7 +424,7 @@ def load_data(current_session=session, parameters={}):
         cql_copy_orderline]
     # Execute
     for cql_command in list_of_copy_command:
-        subprocess.call([cqlsh_path,"127.0.0.1","-e", cql_command])
+        subprocess.call([cqlsh_path,"192.168.48.244","-e", cql_command])
 
 def update_data(current_session=session, parameters={}):
     default_params = default_parameters.copy()
