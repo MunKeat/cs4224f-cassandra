@@ -244,41 +244,68 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_stockbywarehouse)
     current_session.execute(cql_create_customerbybalance)
 
-def update_csv_files(current_session=session, parameters={}):
+def update_csv_files(parameters={}):
     default_params = default_parameters.copy()
     default_params.update(parameters)
-    customer = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_customer.csv"),
-                           na_values='null', header=None, dtype=str)
-    customer.columns = ["w_id", "d_id", "c_id", "w_name", "w_street_1", "w_street_2", "w_tax",
-                        "d_name", "d_street_1", "d_street_2", "d_tax", "c_first", "c_middle", "c_last",
-                        "c_street_1", "c_street_2", "c_city", "c_state", "c_zip", "c_phone", "c_since",
-                        "c_credit", "c_credit_lim", "c_discount", "c_balance",
-                        "c_ytd_payment", "c_payment_cnt", "c_delivery_cnt", "c_data",
-                        "last_order_id", "last_order_date", "last_order_carrier"]
-    district = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_district.csv"),
-                           na_values='null', header=None, dtype=str)
-    district.columns = ["w_id", "d_id", "d_name", "d_street_1", "d_street_2", "d_city",
-                        "d_state", "d_zip", "d_tax", "d_ytd", "d_next_o_id",
-                        "last_unfulfilled_order"]
-    order = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_order.csv"),
-                         na_values='null', header=None, dtype=str)
-    order.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id", "o_ol_cnt", "o_all_local", "o_entry_d",
-                      "c_first", "c_middle", "c_last", "popular_item_id", "popular_item_name",
-                      "popular_item_qty", "ordered_items"]
+    # Run helper function
+    print("Preprocessing customer csv...")
+    helper_update_customer_csv(default_params)
+    print("Preprocessing district csv...")
+    helper_update_district_csv(default_params)
+    print("Preprocessing order csv...")
+    helper_update_orders_csv(default_params)
+
+def helper_read_csv(filename, null_value='null'):
+    filepath = os.path.join(os.path.sep, data_directory, filename)
+    return pd.read_csv(filepath, na_values=null_value, header=None, dtype=str)
+
+def helper_write_csv(dataframe, filename, null_value='null'):
+    filepath = os.path.join(os.path.sep, data_directory, filename)
+    dataframe.to_csv(filepath, na_rep=null_value, header=False, index=False)
+
+def helper_update_customer_csv(parameters={}):
+    default_params = default_parameters.copy()
+    default_params.update(parameters)
+    customer = helper_read_csv("cassandra_customer.csv")
+    customer.columns = ["w_id", "d_id", "c_id", "w_name", "w_street_1",
+                        "w_street_2", "w_tax", "d_name", "d_street_1",
+                        "d_street_2", "d_tax", "c_first", "c_middle", "c_last",
+                        "c_street_1", "c_street_2", "c_city", "c_state",
+                        "c_zip", "c_phone", "c_since", "c_credit",
+                        "c_credit_lim", "c_discount", "c_balance",
+                        "c_ytd_payment", "c_payment_cnt", "c_delivery_cnt",
+                        "c_data", "last_order_id", "last_order_date",
+                        "last_order_carrier"]
+    order = helper_read_csv("cassandra_order.csv")
+    order.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id",
+                     "o_ol_cnt", "o_all_local", "o_entry_d", "c_first",
+                     "c_middle", "c_last", "popular_item_id",
+                     "popular_item_name", "popular_item_qty", "ordered_items"]
     orders = order.copy()
-    orderline = pd.read_csv(os.path.join(os.path.sep, data_directory, "cassandra_order-line.csv"),
-                            na_values='null', header=None, dtype=str)
-    orderline.columns = ["w_id", "d_id", "o_id", "ol_number", "ol_i_id", "ol_i_name",
-                         "ol_delivery_d", "ol_amount", "ol_supply_w_id", "ol_quantity", "ol_dist_info"]
     # Processing Customer DataFrame
     groupby_order = orders[orders.groupby(['w_id', 'd_id', 'c_id'])['o_entry_d'].transform(max) == orders['o_entry_d']]
     groupby_order = groupby_order[['w_id', 'd_id', 'c_id', 'o_id', 'o_entry_d', 'o_carrier_id']]
     customer.drop(["last_order_id", "last_order_date", "last_order_carrier"], axis=1, inplace=True)
     customer = pd.merge(customer, groupby_order, on=['w_id', 'd_id', 'c_id'], how='left')
     customer.rename(columns={'o_id': 'last_order_id', 'o_entry_d':
-                    'last_order_date', 'o_carrier_id': 'last_order_carrier'}, inplace=True)
-    customer.to_csv(os.path.join(os.path.sep, data_directory, "cassandra_customer.csv"),
-                    na_rep="null", header=False, index=False)
+                    'last_order_date', 'o_carrier_id':
+                    'last_order_carrier'}, inplace=True)
+    helper_write_csv(customer, "cassandra_customer.csv")
+    return
+
+def helper_update_district_csv(parameters={}):
+    params = default_parameters.copy()
+    params.update(parameters)
+    district = helper_read_csv("cassandra_district.csv")
+    district.columns = ["w_id", "d_id", "d_name", "d_street_1", "d_street_2",
+                        "d_city", "d_state", "d_zip", "d_tax", "d_ytd",
+                        "d_next_o_id", "last_unfulfilled_order"]
+    order = helper_read_csv("cassandra_order.csv")
+    order.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id",
+                     "o_ol_cnt", "o_all_local", "o_entry_d", "c_first",
+                     "c_middle", "c_last", "popular_item_id",
+                     "popular_item_name", "popular_item_qty", "ordered_items"]
+    orders = order.copy()
     # Processing District DataFrame
     unfulfiled_order = orders[(orders['o_carrier_id'].isnull())]
     groupby_unfulfiled_order = unfulfiled_order[unfulfiled_order.groupby(['w_id', 'd_id'])['o_id'].transform(max) == unfulfiled_order['o_id']]
@@ -286,15 +313,61 @@ def update_csv_files(current_session=session, parameters={}):
     district.drop(['last_unfulfilled_order'], axis=1, inplace=True)
     district = pd.merge(district, groupby_unfulfiled_order, on=['w_id', 'd_id'], how='left')
     district.rename(columns={'o_id': 'last_unfulfilled_order'}, inplace=True)
-    district.to_csv(os.path.join(os.path.sep, data_directory, "cassandra_district.csv"),
-                    na_rep="null", header=False, index=False)
-    # Processing Order DataFrame
+    helper_write_csv(district, "cassandra_district.csv")
+    return
 
+def to_set(x):
+    return str(set(x))
+
+def to_list(x):
+    return str(list(x))
+
+def helper_update_orders_csv(parameters={}):
+    params = default_parameters.copy()
+    params.update(parameters)
+    orders = helper_read_csv("cassandra_order.csv")
+    print("Order Original:", orders.shape)
+    orders.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id",
+                     "o_ol_cnt", "o_all_local", "o_entry_d", "c_first",
+                     "c_middle", "c_last", "popular_item_id",
+                     "popular_item_name", "popular_item_qty", "ordered_items"]
+    orderline = helper_read_csv("cassandra_order-line.csv")
+    orderline.columns = ["w_id", "d_id", "o_id", "ol_number", "ol_i_id",
+                         "ol_i_name", "ol_delivery_d", "ol_amount",
+                         "ol_supply_w_id", "ol_quantity", "ol_dist_info"]
+    orderlines = orderline.copy()
+    # TODO: Check with Fanyi, how is 2 or more equally popular items stored
+    groupby_popular_productline = orderlines[orderlines.groupby(['w_id', 'd_id', 'o_id'])['ol_quantity'].transform(max) == orderlines['ol_quantity']]
+    groupby_popular_productline = groupby_popular_productline[["w_id", "d_id", "o_id", "ol_i_id", "ol_i_name", "ol_quantity"]]
+    # List of each popular items' attribute
+    groupby_popular_productline_id = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_i_id'].agg([to_list]).reset_index()
+    groupby_popular_productline_id.rename(columns={'to_list': 'popular_item_id'}, inplace=True)
+    groupby_popular_productline_name = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_i_name'].agg([to_list]).reset_index()
+    groupby_popular_productline_name.rename(columns={'to_list': 'popular_item_name'}, inplace=True)
+    groupby_popular_productline_quantity = groupby_popular_productline.groupby(['w_id', 'd_id', 'o_id'])['ol_quantity'].agg([to_list]).reset_index()
+    groupby_popular_productline_quantity.rename(columns={'to_list': 'popular_item_qty'}, inplace=True)
+    orders.drop(["popular_item_id", "popular_item_name", "popular_item_qty", "ordered_items"],
+                axis=1, inplace=True)
+    orders = pd.merge(orders, groupby_popular_productline_id, on=['w_id', 'd_id', 'o_id'], how='left')
+    orders = pd.merge(orders, groupby_popular_productline_name, on=['w_id', 'd_id', 'o_id'], how='left')
+    orders = pd.merge(orders, groupby_popular_productline_quantity, on=['w_id', 'd_id', 'o_id'], how='left')
+    orderlines = orderline.copy()
+    print("Join (3) Order: ", orders.shape)
+    print("Orderline col Prior to Group By:", orderlines.shape)
+    groupby_orderline = orderlines.groupby(['w_id', 'd_id', 'o_id'])['ol_i_id'].agg([to_set]).reset_index()
+    groupby_orderline.rename(columns={'to_set': 'ordered_items'},
+                             inplace=True)
+    print("Orderline col Grouped By:", groupby_orderline.shape)
+    groupby_orderline = groupby_orderline[['w_id', 'd_id', 'o_id', 'ordered_items']]
+    orders = pd.merge(orders, groupby_orderline, on=['w_id', 'd_id', 'o_id'], how='left')
+    print("Order grouped II:", orders.shape)
+    helper_write_csv(orders, "cassandra_order.csv")
+    # Get all items ordered
+    pass
 
 def load_data(current_session=session, parameters={}):
-    "Upload csv files"
-    default_params = default_parameters.copy()
-    default_params.update({"data_dir": data_directory, "null_rep": "null"})
+    params = default_parameters.copy()
+    params.update({"data_dir": data_directory, "null_rep": "null"})
     default_params.update(parameters)
     cql_copy_customer = (
         "COPY {keyspace}.customer ("
@@ -322,7 +395,7 @@ def load_data(current_session=session, parameters={}):
             "popular_item_id, popular_item_name, popular_item_qty, "
             "ordered_items)"
         "FROM '{data_dir}/cassandra_order.csv' WITH DELIMITER=',' "
-            "AND HEADER=FALSE AND NULL='{null_rep}';"
+            "AND QUOTE='\"' AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
     cql_copy_stockitem = (
         "COPY {keyspace}.stock_by_warehouse ("
