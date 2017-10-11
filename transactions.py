@@ -526,28 +526,46 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
         #"ORDER BY o_id DESC "
         "LIMIT %(l)s"
     )
+    output_1 = []
+    output_2 = []
     rows = current_session.execute(cql_select_order, parameters=parameters)
-    number_of_entries = len(rows)
+    number_of_orders = 0
+    popular_item_id = []
+    popular_item_name = []
+    order_item_id = []
+    for row in rows:
+        number_of_orders += 1
+        popular_quantity = row.popular_item_qty
+        popular_items = [{'i_name': name, 'ol_quantity': popular_quantity} for name in popular_item_name]
+        output_1.append({'w_id': row.w_id, 'd_id': row.d_id, 'o_id': row.o_id,
+                         'o_entry_d': row.o_entry_d, 'c_first': row.c_first,
+                         'c_middle': row.c_middle, 'c_last': row.c_last, 'popular_items': popular_items})
+        popular_item_id.extend(row.popular_item_id)
+        popular_item_name.extend(row.popular_item_name)
+        order_item_id.append(row.ordered_items)
     # Get distinct popular items
-    distinct_popular_item = list(set([(row.popular_item_name, int(row.popular_item_id)) for row in rows]))
-    # Get a list of ordered items
-    ordered_items = ([list(row.ordered_items) for row in rows])
+    distinct_popular_item = list(set([tuple([id, name]) for id, name in zip(popular_item_id, popular_item_name)]))
+    print("Distinct Popular Item:", distinct_popular_item)
+    print("Ordered Item:", order_item_id)
     # Perform percentage count
-    raw_count = ([(item_id in single_ordered_items).count(True)
-                  for single_ordered_items in ordered_items]
-                    for item_id, item_name in distinct_popular_item)
-    #output = [item, float(item_count) / number_of_entries for item, item_count in zip(distinct_popular_item, raw_count)]
-    # TODO: Process rows to output json
+    raw_count = [[(item_id in single_ordered_items)
+                  for single_ordered_items in order_item_id].count(True)
+                    for item_id, item_name in distinct_popular_item]
+    output_2 = [{"i_name": item[1], "percentage": float(item_count) / number_of_orders} for item, item_count in zip(distinct_popular_item, raw_count)]
+    print(output_1)
+    print(output_2)
+    # return output_1
+    # return output_2
 
 # Transaction 7
 def top_balance_transaction(current_session=session):
-
     # TODO: Move this out
     list_of_distinct_wid = []
     distinct_wid = session.execute("SELECT DISTINCT w_id FROM warehouse")
     for w_id in distinct_wid:
         list_of_distinct_wid.append(w_id)
-
+    # Begin transaction
+    output = []
     highest_balance = []
     for id in list_of_distinct_wid:
         cql_select_customerbybalance = (
@@ -564,5 +582,7 @@ def top_balance_transaction(current_session=session):
     highest_balance = sorted(highest_balance, key=lambda x:float(x.c_balance), reverse=True)
     highest_balance = highest_balance[:10]
     for customer in highest_balance:
-        # TODO: Print as OUTPUT
-        print(customer)
+        output.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': d_name})
+    # TODO: Print as OUTPUT
+    print(output)
+    # return output
