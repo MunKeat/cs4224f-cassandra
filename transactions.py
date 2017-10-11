@@ -1,5 +1,7 @@
 from cassandra.cluster import Cluster
+from cassandra.query import BatchStatement
 from datetime import datetime
+
 
 cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
 session = cluster.connect('warehouse')
@@ -51,16 +53,15 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     d_tax = district.d_tax
     order_number = district.d_next_o_id
     # Update next available order number
-    cql_update_order_number = (
+    current_session.execute(
         """
         UPDATE district
-        SET d_next_o_id = d_next_o_id + 1
+        SET d_next_o_id = %(d_next_o_id)s
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
-        {'d_id': d_id, 'w_id': w_id}
+        {'d_id': d_id, 'w_id': w_id, 'd_next_o_id': order_number + 1}
     )
-    current_session.execute(cql_update_order_number)
 
     total_amount = 0.0
     all_item_id = set()
@@ -286,7 +287,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
-        {'w_id': c_w_id, 'd_id':c_d_id, 'w_ytd': w_ytd}
+        {'w_id': c_w_id, 'd_id':c_d_id, 'd_ytd': d_ytd}
     )
     output = {
         'customer': (c_w_id, c_d_id, c_id),
