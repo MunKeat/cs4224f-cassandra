@@ -317,8 +317,7 @@ def helper_update_district_csv(parameters={}):
     return
 
 def to_set(x):
-    # return str(list(set(x))).replace('[', '}').replace(']','}')
-    return str(set(x))
+    return str(list(set(x))).replace('[', '{').replace(']','}')
 
 def to_list(x):
     return str(list(x))
