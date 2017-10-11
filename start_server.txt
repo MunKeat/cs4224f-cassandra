@@ -26,5 +26,10 @@ change
 	listen_address: localhost
 to
 	listen_address: 192.168.48.244 (different from nodes)
+in line 676:
+change
+	rpc_address: localhost
+to
+	rpc_address: 192.168.48.244 (different from nodes)
 
-4.run cassandra on each node
+5.run cassandra on each node
