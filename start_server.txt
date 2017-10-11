@@ -1,0 +1,30 @@
+1.run the script ~/le_setup_ca.sh
+#!/usr/bin/bash
+cd /temp
+if [ ! -d cs4224f ];
+then
+    mkdir cs4224f
+fi
+cd cs4224f
+wget http://www-us.apache.org/dist/cassandra/3.11.1/apache-cassandra-3.11.1-bin.tar.gz
+tar -zxf apache-cassandra-3.11.1-bin.tar.gz
+mv apache-cassandra-3.11.1 cassandra
+
+2.open the config file
+make configuration
+cd ./conf
+vim cassandra.yaml
+
+3.detail
+in line 425:
+change
+	seeds: "127.0.0.1"
+to
+	seeds: "192.168.48.244,192.168.48.245,192.168.48.246,192.168.48.247,192.168.48.248"
+in line 599:
+change
+	listen_address: localhost
+to
+	listen_address: 192.168.48.244 (different from nodes)
+
+4.run cassandra on each node
