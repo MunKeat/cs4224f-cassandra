@@ -1,8 +1,8 @@
 from cassandra.cluster import Cluster
 from datetime import datetime
 
-cluster = Cluster()
-session = cluster.connect()
+cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
+session = cluster.connect('warehouse')
 
 # Current WIP - Not proven to work
 # assuming items is a list of items in the order
@@ -11,49 +11,49 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     num_of_items = M
 
     # Retrieve customer info
-    cql_select_customer = (
+    customers = current_session.execute(
         """
         SELECT c_last, c_first, c_middle, c_credit, c_discount
-        FROM {keyspace}.customer
+        FROM customer
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
         {'d_id': d_id, 'w_id': w_id, 'c_id': c_id}
     )
-    customer = current_session.execute(cql_select_customer)[0]
+    customer = customers[0]
     c_last = customer.c_last
     c_middle = customer.c_middle
     c_first = customer.c_first
     c_credit = customer.c_credit
     c_discount = customer.c_discount
     # Retrieve warehouse info
-    cql_select_warehouse = (
+    warehouses = current_session.execute(
         """
         SELECT w_tax
-        FROM {keyspace}.warehouse
+        FROM warehouse
         WHERE w_id = %(w_id)s
         """,
         {'w_id': w_id}
     )
-    w_tax = current_session.execute(cql_select_warehouse)[0].w_tax
+    w_tax = warehouses[0].w_tax
     # Retrieve district info
-    cql_select_district = (
+    districts = current_session.execute(
         """
         SELECT d_tax, d_next_o_id
-        FROM {keyspace}.district
+        FROM district
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
         {'d_id': d_id, 'w_id': w_id}
     )
-    district = current_session.execute(cql_select_district)[0]
+    district = districts[0]
     d_tax = district.d_tax
     order_number = district.d_next_o_id
     # Update next available order number
     cql_update_order_number = (
         """
-        UPDATE {keyspace}.district
+        UPDATE district
         SET d_next_o_id = d_next_o_id + 1
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
@@ -65,9 +65,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     total_amount = 0.0
     all_item_id = set()
     ordered_items = {}
-    popular_item_id = None
+    popular_item_id = []
     popular_item_qty = 0
-    popular_item_name = ''
+    popular_item_name = []
     isAllLocal = True
 
     # Prepared statements for order line transactions
@@ -75,7 +75,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     get_item_stock_stmt = session.prepare(
         """
         SELECT s_quantity, s_ytd, %(s_dist)s AS s_dist_info, i_name, i_price
-        FROM {keyspace}.stock_by_warehouse
+        FROM stock_by_warehouse
         WHERE w_id = ?
         AND i_id = ?
         """,
@@ -83,7 +83,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     )
     update_stock_stmt = session.prepare(
         """
-        UPDATE {keyspace}.stock_by_warehouse
+        UPDATE stock_by_warehouse
         SET s_quantity = ?,
         s_ytd = ?,
         s_order_cnt = s_order_cnt + 1
@@ -95,7 +95,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # TODO: check if this prepared statement is correct
     create_ol_stmt = session.prepare(
         """
-        INSERT INTO {keyspace}.orderline
+        INSERT INTO orderline
         (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
         VALUES
         ?
@@ -108,7 +108,8 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_supply_w_id = item[1]
         ol_quantity = item[2]
         # Retrieve stock and item info
-        item_stock = current_session.execute(get_item_stock_stmt, [ol_supply_w_id, ol_i_id])[0]
+        item_stocks = current_session.execute(get_item_stock_stmt, [ol_supply_w_id, ol_i_id])
+        item_stock = item_stocks[0]
         stock_qty = item_stock.s_quantity
         stock_ytd = item_stock.s_ytd
         ol_dist_info = item_stock.s_dist_info
@@ -128,8 +129,12 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
-            popular_item_id = ol_i_id
-            popular_item_name = item_name
+            popular_item_id = [ol_i_id]
+            popular_item_name = [item_name]
+        elif (ol_quantity == popular_item_qty):
+            popular_item_id.append(ol_i_id)
+            popular_item_name.append(item_name)
+
         # Create a new order line
         ol_info = [w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info]
         current_session.execute(create_ol_stmt, ol_info)
@@ -167,7 +172,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     cql_create_order = (
         """
-        INSERT INTO {keyspace}.orders
+        INSERT INTO orders
         (w_id, d_id, o_id, c_id, 
             o_ol_cnt, o_all_local, o_entry_d, 
             c_first, c_middle, c_last, 
@@ -204,17 +209,17 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
 # Transaction 2
 def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     # Retrieve customer information
-    cql_select_customer = (
+    customers = current_session.execute(
         """
         SELECT *
-        FROM {keyspace}.customer
+        FROM customer
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
         {'d_id': c_d_id, 'w_id': c_w_id, 'c_id': c_id}
     )
-    customer = current_session.execute(cql_select_customer)[0]
+    customer = customers[0]
     c_balance = customer.c_balance
     c_ytd_payment = customer.c_ytd_payment
     # Update customer
@@ -222,7 +227,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     c_ytd_payment += payment
     current_session.execute(
         """
-        UPDATE {keyspace}.customer
+        UPDATE customer
         SET c_balance = %(c_balance)s,
         c_ytd_payment = %(c_ytd_payment)s,
         c_payment_cnt = c_payment_cnt + 1
@@ -233,43 +238,43 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
     )
     # Retrieve warehouse information
-    cql_select_warehouse = (
+    warehouses = current_session.execute(
         """
         SELECT *
-        FROM {keyspace}.warehouse
+        FROM warehouse
         WHERE w_id = %(w_id)s
         """,
         {'w_id': c_w_id}
     )
-    warehouse = current_session.execute(cql_select_warehouse)[0]
+    warehouse = warehouses[0]
     w_ytd = warehouse.w_ytd
     # Update warehouse
     w_ytd += payment
     current_session.execute(
         """
-        UPDATE {keyspace}.warehouse
+        UPDATE warehouse
         SET w_ytd = %(w_ytd)s
         WHERE w_id = %(w_id)s
         """,
         {'w_id': c_w_id, 'w_ytd': w_ytd}
     )
     # Retrieve district information
-    cql_select_district = (
+    districts = current_session.execute(
         """
         SELECT *
-        FROM {keyspace}.district
+        FROM district
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
         {'d_id': c_d_id, 'w_id': c_w_id}
     )
-    district = current_session.execute(cql_select_district)[0]
+    district = districts[0]
     d_ytd = district.d_ytd
     # Update district
     d_ytd += payment
     current_session.execute(
         """
-        UPDATE {keyspace}.district
+        UPDATE district
         SET d_ytd = %(d_ytd)s
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
@@ -299,17 +304,17 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
     districts = current_session.execute(
         """
         SELECT * 
-        FROM  {keyspace}.district
+        FROM  district
         WHERE w_id = %s;
         """,
-        [w_id]
+        (w_id,)
     )
     for district in districts:
         # a)
         orders = current_session.execute(
             """
             SELECT * 
-            FROM  {keyspace}.orders
+            FROM  orders
             WHERE w_id = %s
             AND d_id = %s;
             """,
@@ -327,7 +332,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
         # b)
         current_session.execute(
                     """
-                    UPDATE  {keyspace}.orders
+                    UPDATE  orders
                         SET o_carrier_id = %s
                         WHERE w_id = %s 
                         AND d_id = %s
@@ -340,7 +345,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
         orderlines = current_session.execute(
             """
             SELECT * 
-            FROM  {keyspace}.orderline
+            FROM  orderline
             WHERE w_id = %s
             AND d_id = %s
             AND o_id = %s;
@@ -352,7 +357,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
             order_amt += orderline.ol_amount
             current_session.execute(
                 """
-                UPDATE  {keyspace}.orderline
+                UPDATE  orderline
                     SET ol_delivery_d = %s
                     WHERE w_id = %s 
                     AND d_id = %s
@@ -365,18 +370,17 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
         customers = current_session.execute(
             """
             SELECT * 
-            FROM  {keyspace}.customer
+            FROM  customer
             WHERE w_id = %s
             AND d_id = %s
-            AND o_id = %s
             AND c_id = %s;
             """,
-            (w_id, district.d_id, o_id, c_id)
+            (w_id, district.d_id, c_id)
         )
         customer = customers[0]
         current_session.execute(
                 """
-                UPDATE  {keyspace}.customer
+                UPDATE  customer
                     SET c_balance = %s AND ol_amount = %s
                     WHERE w_id = %s 
                     AND d_id = %s
@@ -392,9 +396,9 @@ def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
     customer = current_session.execute(
         """
         SELECT * 
-        FROM  {keyspace}.customer
-        WHERE c_w_id = %s
-        AND c_d_id = %s
+        FROM  customer
+        WHERE w_id = %s
+        AND d_id = %s
         AND c_id = %s;
         """,
         (c_w_id, c_d_id, c_id)
@@ -407,14 +411,14 @@ def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
     output['c_last'] = customer[0].c_last
     output['c_balance'] = customer[0].c_balance
     #2) get customer's last order
-    output['o_id'] = customer[0].last_oid
-    output['o_entry_d'] = customer[0].last_o_entry_d
-    output['o_carrier_id'] = customer[0].last_o_carrier_id
+    output['o_id'] = customer[0].last_order_id
+    output['o_entry_d'] = customer[0].last_order_date
+    output['o_carrier_id'] = customer[0].last_order_carrier
     #3) each item information
     orderlines = current_session.execute(
         """
         SELECT * 
-        FROM  {keyspace}.orderline
+        FROM  orderline
         WHERE w_id = %s
         AND d_id = %s
         AND o_id = %s;
@@ -428,7 +432,7 @@ def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
         items[orderline.ol_number]['ol_supply_w_id'] = orderline.ol_supply_w_id
         items[orderline.ol_number]['ol_quantity'] = orderline.ol_quantity
         items[orderline.ol_number]['ol_amount'] = orderline.ol_amount
-        items[orderline.ol_number]['ol_delivery_id'] = orderline.ol_delivery_id
+        items[orderline.ol_number]['ol_delivery_d'] = orderline.ol_delivery_d
     output['items'] = items
     return output
 
@@ -443,7 +447,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     }
     cql_select_order = (
         "SELECT w_id, d_id, o_id,ordered_items"
-        "FROM {keyspace}.orders "
+        "FROM orders "
         "WHERE w_id = %(w_id)s AND d_id = %(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
@@ -456,7 +460,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     parameters["all_item_id"]=all_item_id
     cql_select_order = (
         "SELECT w_id, i_id, i_name"
-        "FROM {keyspace}.stock_by_warehouse "
+        "FROM stock_by_warehouse "
         "WHERE w_id = %(w_id)s AND i_id IN %(d_id)s AND s_quantitiy < %(T)s"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
@@ -478,7 +482,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     cql_select_order = (
         "SELECT w_id, d_id, o_id, o_entry_d, c_first, c_middle, c_last, "
         "popular_item_id, popular_item_name, popular_item_qty, ordered_items "
-        "FROM {keyspace}.orders "
+        "FROM orders "
         "WHERE w_id %(w_id)s AND d_id %(d_id)s "
         "ORDER BY o_id DESC "
         "LIMIT %(l)s"
@@ -502,7 +506,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
 def top_balance_transaction(current_session=session):
     cql_select_customerbybalance = (
         "SELECT c_first, c_middle, c_last, c_balance, w_name, d_name "
-        "FROM {keyspace}.customerByBalance"
+        "FROM customerByBalance"
         "ORDER BY c_balance DESC "
         "LIMIT 10"
     )
