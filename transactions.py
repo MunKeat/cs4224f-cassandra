@@ -415,6 +415,9 @@ def order_status_transaction(current_session, c_w_id, c_d_id, c_id):
     output['o_entry_d'] = customer[0].last_order_date
     output['o_carrier_id'] = customer[0].last_order_carrier
     #3) each item information
+    if output['o_id'] is None:
+        #customer does not have any order yet
+        return output
     orderlines = current_session.execute(
         """
         SELECT * 
