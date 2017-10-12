@@ -8,23 +8,17 @@ import sys
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 
-auth_provider = PlainTextAuthProvider(
-        username='cs4224f', password='tE3w8JyB')
-cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'] ,auth_provider=auth_provider)
-# cluster = Cluster()
-session = cluster.connect()
-
-## TODO: Create immutable dict
-default_parameters = {
-    "keyspace": "warehouse",
-    "strategy": "SimpleStrategy",
-    "replication": 3,
-    "consistency": "one"
-}
-
 cqlsh_path = None
 current_directory = os.path.dirname(os.path.realpath(__file__))
+config_path = os.path.join(os.path.sep, current_directory, "config.conf")
 data_directory = os.path.join(os.path.sep, current_directory, "data")
+
+# Configuration file
+default_parameters = {}
+execfile(config_path, default_parameters)
+
+cluster = Cluster(contact_points=default_parameters['hosts'])
+session = cluster.connect()
 
 def verify_cql_path(silent=False):
     # Very bad practise: This is a hack

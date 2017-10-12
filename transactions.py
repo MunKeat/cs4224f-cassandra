@@ -2,8 +2,18 @@ from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
 from datetime import datetime
 
-cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
-session = cluster.connect('warehouse')
+current_directory = os.path.dirname(os.path.realpath(__file__))
+config_path = os.path.join(os.path.sep, current_directory, "config.conf")
+data_directory = os.path.join(os.path.sep, current_directory, "data")
+
+# Configuration file
+default_parameters = {}
+execfile(config_path, default_parameters)
+
+cluster = Cluster(default_parameters['hosts'])
+session = cluster.connect(default_parameters['keyspace'])
+
+output_form = default_parameters['output_form']
 
 ###############################################################################
 #
@@ -13,7 +23,6 @@ session = cluster.connect('warehouse')
 import pprint
 
 def output(dictionary):
-    output_form = "PRETTY_PRINT"
     if output_form == "RAW_PRINT":
         print(dictionary)
         return None
