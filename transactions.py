@@ -67,7 +67,7 @@ create_ol_stmt = session.prepare(
 # Comment: Assume items is a list of items in the order
 #
 ###############################################################################
-def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
+def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
     num_of_items = M
 
     # Retrieve customer info
@@ -256,7 +256,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
 # TRANSACTION 2
 #
 ###############################################################################
-def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
+def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
     batch = BatchStatement()
     # Retrieve customer information
     customers = current_session.execute(
@@ -517,7 +517,7 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session):
 # Comment: WIP
 #
 ###############################################################################
-def stock_level_transaction(w_id, d_id,T, L, current_session=session):
+def stock_level_transaction(w_id, d_id,T, L, current_session):
     parameters = {
         "w_id": w_id,
         "d_id": d_id,
@@ -555,7 +555,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
 # TRANSACTION 6
 #
 ###############################################################################
-def popular_item_transaction(i, w_id, d_id, L, current_session=session):
+def popular_item_transaction(i, w_id, d_id, L, current_session):
     parameters = {
         "i": i,
         "w_id": w_id,
@@ -601,7 +601,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
 # TRANSACTION 7
 #
 ###############################################################################
-def top_balance_transaction(current_session=session):
+def top_balance_transaction(current_session):
     # TODO: Move this out
     list_of_distinct_wid = []
     distinct_wid = session.execute("SELECT DISTINCT w_id FROM warehouse")
