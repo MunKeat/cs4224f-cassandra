@@ -2,19 +2,10 @@
 
 The code uses Python (Python 2.7.5), or more specifically, DataStax Python Driver for Apache Cassandra
 
-Please ensure that you have the `virtualenv` and `pip` packages installed.
-
-Please also ensure that you have [downloaded the dataset](http://www.comp.nus.edu.sg/~cs4224/4224-project-files.zip)
-
-Please take note of the file path for your `cqlsh` - you will need to confirm the file path for `cqlsh`
-
-Additionally, please ensure that all the nodes have `cassandra` running.
-
-We will also assume that you are using a Linux-based system, or at least have access to a Linux-based terminal
+We will assume that you are using a Linux-based system, or at least have access to a Linux-based terminal
 
 In summary, ensure the following:
 
-* pip (Python package)
 * virtualenv (Python package)
 * File path for `cqlsh`
 * `cassandra` running on all nodes
@@ -35,6 +26,15 @@ $ # The full path of virtualenv.py will be obtained, take note of the path
 $ # A possible output: /home/stuproj/cs4224f/virtualenv-1.9/virtualenv.py (results will vary)
 ```
 
+### Obtaining File Path of cqlsh
+
+1. Run the following script to get all the possible path of cqlsh
+```
+$ whereis cqlsh
+$ # Possible output
+$ # cqlsh: /temp/cs4224f/cassandra/bin/cqlsh /temp/cs4224f/cassandra/bin/cqlsh.bat /temp/cs4224f/cassandra/bin/cqlsh.py
+```
+
 ### Setup
 
 0. Download and unzip the project repository
@@ -45,7 +45,9 @@ $ cd ~
 $ unzip <Project File>
 ```
 
-1. Create an environment directory, `env`, using virtualenv. Replace the variable <virtualenv> with the full path of the file, `virtualenv.py`
+1. Create an environment directory, `env`, using virtualenv. 
+
+Replace the variable \<virtualenv\> with the full path of the file, `virtualenv.py`
 
 ```
 $ # Ensure that you are at the root of the project repository
@@ -71,17 +73,18 @@ $ source ./env/bin/activate
 (env) $ mv ./4224-project-files/data-files/*.csv ./data
 ```
 
-4. Run `import.py` to import the data into cassandra
+4. Set the configuration file
+
+
+5. Run `import.py` to import the data into cassandra
 
 ```
 (env) $ python import.py
 ```
 
-5. You will be prompted to confirm the correct `cqlsh` path
+6. You will be prompted to confirm the correct `cqlsh` path
 
-<<Insert Image>>
-
-6. By the completion of the script, the data would have been imported into the cassandra database.
+7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, ruhn step 4 to step 6 with different `config.txt`
 
 ### Running Cassandra with DataStax Python Driver
 
