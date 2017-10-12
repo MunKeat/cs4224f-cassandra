@@ -30,6 +30,12 @@ $ # The full path of virtualenv.py will be obtained, take note of the path
 $ # A possible output: /home/stuproj/cs4224f/virtualenv-1.9/virtualenv.py (results will vary)
 ```
 
+2. Ensure that the `virtualenv.py` is executable
+
+```
+$ chmod +x virtualenv.py
+```
+
 <hr/>
 
 ### <a name="get_cqlsh"></a> Obtaining File Path of cqlsh
@@ -110,7 +116,17 @@ $ source ./env/bin/activate
 
 <hr/>
 
-### Running Cassandra with DataStax Python Driver
+### Running Cassandra Benchmarking
+
+1. Ensure that all the nodes are logged in (i.e. that you have access to all the nodes), and that they are currently in the root of the project directory. Assign each node a number starting from 0, in increasing order.
+
+2. On each node, run `total_act_test.sh {0.. Number of node - 1} {$NC}`. For instance,
+
+```
+$ total_act_test.sh 7 40
+```
+
+3. At the end of it, collect the output file, `{0.. Number of node - 1}-state.txt` from each node.
 
 <hr/>
 
