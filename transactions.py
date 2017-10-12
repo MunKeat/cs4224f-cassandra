@@ -352,7 +352,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
 # TRANSACTION 3
 #
 ###############################################################################
-def delivery_transaction(w_id, carrier_id, current_session=session):
+def delivery_transaction(w_id, carrier_id, current_session):
     #TODO: validate carrier_id and w_id
     for d_id in range(1, 11):
         # a)
@@ -440,7 +440,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
 # TRANSACTION 4
 #
 ###############################################################################
-def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
+def order_status_transaction(c_w_id, c_d_id, c_id, current_session):
     result = {}
     customer = current_session.execute(
         """
