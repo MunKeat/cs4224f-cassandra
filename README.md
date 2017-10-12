@@ -44,7 +44,7 @@ $ # cqlsh: /temp/cs4224f/cassandra/bin/cqlsh /temp/cs4224f/cassandra/bin/cqlsh.b
 1a. Alternatively, use the following to determine the full path of the executable `cqlsh`
 
 ```
-$ type -a cqlsh
+$ which cqlsh
 ```
 
 2. Ensure that the full path of the executable permits you to run query on it. To test, use the following
@@ -90,8 +90,9 @@ $ source ./env/bin/activate
 (env) $ mv ./4224-project-files/data-files/*.csv ./data
 ```
 
-4. Set up the configuration file
+4. Set up the configuration file. `config.conf`
 
+![Configuration file setting](documentation/config-text.png)
 
 5. Run `import.py` to import the data into cassandra
 
@@ -103,7 +104,7 @@ $ source ./env/bin/activate
 
 ![Confirm prompt by entering 'y', otherwise, enter 'n'](documentation/setup-prompt.png)
 
-7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, run step 4 to step 6 with different `config.txt`
+7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, run step 4 to step 6 with different `config.conf`
 
 <hr/>
 
