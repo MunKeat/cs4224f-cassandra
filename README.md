@@ -101,6 +101,8 @@ $ source ./env/bin/activate
 
 6. You will be prompted to confirm the correct `cqlsh` path
 
+![Confirm prompt by entering 'y', otherwise, enter 'n'](documentation/setup-prompt.png)
+
 7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, run step 4 to step 6 with different `config.txt`
 
 <hr/>
