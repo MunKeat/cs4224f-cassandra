@@ -223,7 +223,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     # Execute batch operations
     session.execute(batch)
 
-    output = {
+    result = {
         'w_id': w_id,
         'd_id': d_id,
         'c_id': c_id,
@@ -238,7 +238,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         'total_amound': total_amount,
         'ordered_item': ordered_items
     }
-    return output(output)
+    return output(result)
 
 ###############################################################################
 #
@@ -322,7 +322,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         {'w_id': c_w_id, 'd_id':c_d_id, 'd_ytd': d_ytd}
     )
     current_session.execute(batch)
-    output = {
+    result = {
         'customer': (c_w_id, c_d_id, c_id),
         'customer_name': (customer.c_first, customer.c_middle, customer. c_last),
         'customer_address': (customer.c_street_1, customer.c_street_2, customer.c_city, customer.c_state, customer.c_zip),
@@ -336,7 +336,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         'district_address': (district.d_street_1, district.d_street_2, district.d_city, district.d_state, district.d_zip),
         'payment': payment
     }
-    return output(output)
+    return output(result)
 
 ###############################################################################
 #
