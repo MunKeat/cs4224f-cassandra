@@ -6,7 +6,6 @@ import subprocess
 import sys
 
 from cassandra.cluster import Cluster
-from cassandra.auth import PlainTextAuthProvider
 
 cqlsh_path = None
 current_directory = os.path.dirname(os.path.realpath(__file__))
@@ -521,7 +520,6 @@ def update_data(current_session=session, parameters={}):
                 future.add_errback(log_error, cql_update_order_with_popular_item)
 
     ##fill district: last_unfulfilled_id
-    # TODO: Check with yuxin
     print("Updating precalculated value for District...")
     for w_id in wid_list:
         for d_id in range(1, 11):
@@ -562,6 +560,5 @@ if __name__ == '__main__':
     set_consistency()
     create_column_families()
     load_data()
-    # update_data()
     end = time.time()
     print("import.py took: {}s".format(end - start))

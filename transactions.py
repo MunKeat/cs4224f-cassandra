@@ -2,6 +2,8 @@ from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
 from datetime import datetime
 
+import os
+
 current_directory = os.path.dirname(os.path.realpath(__file__))
 config_path = os.path.join(os.path.sep, current_directory, "config.conf")
 data_directory = os.path.join(os.path.sep, current_directory, "data")
