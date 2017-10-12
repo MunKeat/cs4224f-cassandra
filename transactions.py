@@ -608,7 +608,7 @@ def top_balance_transaction(current_session):
     for result in distinct_wid:
         list_of_distinct_wid.append(result.w_id)
     # Begin transaction
-    output = []
+    output_1 = []
     highest_balance = []
     for id in list_of_distinct_wid:
         cql_select_customerbybalance = (
@@ -624,5 +624,5 @@ def top_balance_transaction(current_session):
     highest_balance = sorted(highest_balance, key=lambda x:float(x.c_balance), reverse=True)
     highest_balance = highest_balance[:10]
     for customer in highest_balance:
-        output.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': customer.d_name})
-    return output(output)
+        output_1.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': customer.d_name})
+    return output(output_1)
