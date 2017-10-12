@@ -547,7 +547,7 @@ def stock_level_transaction(w_id, d_id,T, L, current_session):
     for row in rows:
         st_count+=1
     out_res=[{"number in S":st_count}]
-    output(out_res)
+    return output(out_res)
 
 
 ###############################################################################

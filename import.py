@@ -53,20 +53,11 @@ def verify_cql_path(silent=False):
     print("Program will now terminate...")
     sys.exit()
 
-# TODO: Remove check and run massage script regardless
 def verify_csv_files():
-    csv_files = ["customer.csv", "district.csv", "order-line.csv", "order.csv",
-                 "stockitem.csv", "warehouse.csv"]
-    csv_files = [os.path.join(os.path.sep, data_directory, ("cassandra_" + file)) for file in csv_files]
-    massage_script = os.path.join(os.path.sep, current_directory, "massage.sh")
-    for csv_file in csv_files:
-        print("Checking if `{}` exist...".format(csv_file))
-        if not os.path.isfile(csv_file):
-            print("It appears that `{}` does not exist".format(csv_file))
-            # Allow for direct execution
-            subprocess.call(["chmod", "+x", massage_script])
-            subprocess.call([massage_script])
-            return
+    # Allow for direct execution
+    subprocess.call(["chmod", "+x", massage_script])
+    subprocess.call([massage_script])
+    return
 
 def create_keyspace(current_session=session, parameters={}):
     "Create keyspace"
@@ -573,4 +564,4 @@ if __name__ == '__main__':
     load_data()
     # update_data()
     end = time.time()
-    print("Took: {}s".format(end - start))
+    print("import.py took: {}s".format(end - start))
