@@ -3,5 +3,8 @@
 #nc $2
 for((i=0;i<$2;i++))
 {
-	python act_test.py < ./$i.txt > /dev/null 2> ./res/$i-res.txt &
+	if((i%$2==$1))
+	then
+		python act_test.py < ./xact-files/$i.txt > /dev/null 2> ./xres/$i-res.txt &
+	fi
 }
