@@ -25,6 +25,32 @@ def output(dictionary):
 
 ###############################################################################
 #
+# Prepared Statement(s)
+#
+###############################################################################
+# Prepared Statements for orderline transactions in Transaction 1
+update_stock_stmt = session.prepare(
+    """
+    UPDATE stock_by_warehouse
+    SET s_quantity = ?,
+    s_ytd = ?,
+    s_order_cnt = ?,
+    s_remote_cnt = ?
+    WHERE w_id = ?
+    AND i_id = ?
+    """
+)
+create_ol_stmt = session.prepare(
+    """
+    INSERT INTO orderline
+    (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
+    VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+)
+
+###############################################################################
+#
 # TRANSACTION 1
 #
 # Comment: Assume items is a list of items in the order
@@ -92,38 +118,11 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     popular_item_name = []
     isAllLocal = True
 
-    # Prepared statements for order line transactions
     if (d_id == 10):
         s_dist_col_name = 's_dist_info_' + str(d_id)
     elif (d_id < 10):
         s_dist_col_name = 's_dist_info_0' + str(d_id)
-    get_item_stock_stmt = session.prepare(
-        """
-        SELECT s_quantity, s_ytd, {} AS s_dist_info, s_order_cnt, s_remote_cnt, i_name, i_price
-        FROM stock_by_warehouse
-        WHERE w_id = ?
-        AND i_id = ?
-        """.format(s_dist_col_name)
-    )
-    update_stock_stmt = session.prepare(
-        """
-        UPDATE stock_by_warehouse
-        SET s_quantity = ?,
-        s_ytd = ?,
-        s_order_cnt = ?,
-        s_remote_cnt = ?
-        WHERE w_id = ?
-        AND i_id = ?
-        """
-    )
-    create_ol_stmt = session.prepare(
-        """
-        INSERT INTO orderline
-        (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
-        VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-    )
+
     batch = BatchStatement()
     # Create order line for each item in the order
     for ol_number in range(0, M):
@@ -132,7 +131,15 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         ol_supply_w_id = item[1]
         ol_quantity = item[2]
         # Retrieve stock and item info
-        item_stocks = current_session.execute(get_item_stock_stmt, [ol_supply_w_id, ol_i_id])
+        item_stocks = current_session.execute(
+            """
+            SELECT s_quantity, s_ytd, {} AS s_dist_info, s_order_cnt, s_remote_cnt, i_name, i_price
+            FROM stock_by_warehouse
+            WHERE w_id = %(w_id)s
+            AND i_id = %(i_id)s
+            """.format(s_dist_col_name), 
+            {'i_id': ol_i_id, 'w_id': ol_supply_w_id}
+        )
         item_stock = item_stocks[0]
         stock_qty = item_stock.s_quantity
         stock_ytd = item_stock.s_ytd
