@@ -7,6 +7,24 @@ session = cluster.connect('warehouse')
 
 ###############################################################################
 #
+# Utility Function(s)
+#
+###############################################################################
+import pprint
+
+def output(dictionary):
+    output_form = "PRETTY_PRINT"
+    if output_form == "RAW_PRINT":
+        print(dictionary)
+        return None
+    else if output_form == "PRETTY_PRINT":
+        pprint.pprint(dictionary)
+        return None
+    else:
+        return dictionary
+
+###############################################################################
+#
 # TRANSACTION 1
 #
 # Comment: Assume items is a list of items in the order
@@ -547,15 +565,13 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
         order_item_id.append(row.ordered_items)
     # Get distinct popular items
     distinct_popular_item = list(set([tuple([id, name]) for id, name in zip(popular_item_id, popular_item_name)]))
-    print("Distinct Popular Item:", distinct_popular_item)
-    print("Ordered Item:", order_item_id)
     # Perform percentage count
     raw_count = [[(item_id in single_ordered_items)
                   for single_ordered_items in order_item_id].count(True)
                     for item_id, item_name in distinct_popular_item]
     output_2 = [{"i_name": item[1], "percentage": float(item_count) / number_of_orders} for item, item_count in zip(distinct_popular_item, raw_count)]
-    print(output_1)
-    print(output_2)
+    output(output_1)
+    output(output_2)
     # return output_1
     # return output_2
 
@@ -568,8 +584,8 @@ def top_balance_transaction(current_session=session):
     # TODO: Move this out
     list_of_distinct_wid = []
     distinct_wid = session.execute("SELECT DISTINCT w_id FROM warehouse")
-    for w_id in distinct_wid:
-        list_of_distinct_wid.append(w_id)
+    for result in distinct_wid:
+        list_of_distinct_wid.append(result.w_id)
     # Begin transaction
     output = []
     highest_balance = []
@@ -588,7 +604,5 @@ def top_balance_transaction(current_session=session):
     highest_balance = sorted(highest_balance, key=lambda x:float(x.c_balance), reverse=True)
     highest_balance = highest_balance[:10]
     for customer in highest_balance:
-        output.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': d_name})
-    # TODO: Print as OUTPUT
-    print(output)
-    # return output
+        output.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': customer.d_name})
+    output(output)
