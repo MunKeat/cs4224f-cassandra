@@ -348,12 +348,11 @@ def load_data(current_session=session, parameters={}):
     default_params.update(parameters)
     cql_copy_customer = (
         "COPY {keyspace}.customer ("
-            "w_id, d_id , c_id, w_name, w_street_1, w_street_2, w_tax, d_name,"
-            "d_street_1, d_street_2, d_tax, c_first, c_middle, c_last, "
+            "w_id, d_id , c_id, w_name, d_name,"
+            "c_first, c_middle, c_last, "
             "c_street_1, c_street_2, c_city, c_state, c_zip,"
             "c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, "
-            "c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data,"
-            "last_order_id, last_order_date, last_order_carrier )"
+            "c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data) "
         "FROM '{data_dir}/cassandra_customer.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
@@ -388,8 +387,7 @@ def load_data(current_session=session, parameters={}):
     cql_copy_district = (
         "COPY {keyspace}.district ("
             "w_id, d_id, d_name, d_street_1, d_street_2, "
-            "d_city, d_state, d_zip, d_tax, d_ytd, d_next_o_id, "
-            "last_unfulfilled_order) "
+            "d_city, d_state, d_zip, d_tax, d_ytd, d_next_o_id) "
         "FROM '{data_dir}/cassandra_district.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
