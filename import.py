@@ -269,6 +269,8 @@ def helper_update_customer_csv(parameters={}):
     customer.rename(columns={'o_id': 'last_order_id', 'o_entry_d':
                     'last_order_date', 'o_carrier_id':
                     'last_order_carrier'}, inplace=True)
+    # Remove unused columns
+    customer.drop(["w_street_1", "w_street_2", "w_tax", "d_street_1", "d_street_2", "d_tax", "last_order_id", "last_order_date", "last_order_carrier"], axis=1, inplace=True)
     helper_write_csv(customer, "cassandra_customer.csv")
     return
 
@@ -292,6 +294,8 @@ def helper_update_district_csv(parameters={}):
     district.drop(['last_unfulfilled_order'], axis=1, inplace=True)
     district = pd.merge(district, groupby_unfulfiled_order, on=['w_id', 'd_id'], how='left')
     district.rename(columns={'o_id': 'last_unfulfilled_order'}, inplace=True)
+    # Remove unused columns
+    district.drop(['last_unfulfilled_order'], axis=1, inplace=True)
     helper_write_csv(district, "cassandra_district.csv")
     return
 
