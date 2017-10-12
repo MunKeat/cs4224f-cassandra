@@ -525,11 +525,11 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
         "ALLOW FILTERING"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
-
     st_count=0
     for row in rows:
         st_count+=1
-    return st_count
+    out_res=[{"number in S":st_count}]
+    output(out_res)
 
 
 ###############################################################################
