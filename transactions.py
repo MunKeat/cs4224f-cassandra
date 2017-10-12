@@ -490,7 +490,7 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
         items[orderline.ol_number]['ol_amount'] = orderline.ol_amount
         items[orderline.ol_number]['ol_delivery_d'] = orderline.ol_delivery_d
     output['items'] = items
-    return output
+    return output(output)
 
 ###############################################################################
 #
