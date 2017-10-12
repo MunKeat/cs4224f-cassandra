@@ -217,7 +217,8 @@ def create_column_families(current_session=session, parameters={}):
         ).format(**default_params)
     cql_create_customerbybalance = (
         "CREATE MATERIALIZED VIEW {keyspace}.customer_by_balance AS "
-            "SELECT * FROM {keyspace}.customer "
+            "SELECT c_balance, w_name, d_name, c_first, c_middle, c_last "
+            "FROM {keyspace}.customer "
             "WHERE w_id IS NOT NULL and d_id IS NOT NULL and "
                 "c_id IS NOT NULL and c_balance IS NOT NULL "
             "PRIMARY KEY ((w_id), c_balance, d_id, c_id) "
