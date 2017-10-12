@@ -2,12 +2,16 @@ from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
 from datetime import datetime
 
-
 cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
 session = cluster.connect('warehouse')
 
-# assuming items is a list of items in the order
-# Transaction 1
+###############################################################################
+#
+# TRANSACTION 1
+#
+# Comment: Assume items is a list of items in the order
+#
+###############################################################################
 def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     num_of_items = M
 
@@ -211,7 +215,11 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     return output
 
-# Transaction 2
+###############################################################################
+#
+# TRANSACTION 2
+#
+###############################################################################
 def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     batch = BatchStatement()
     # Retrieve customer information
@@ -460,8 +468,13 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     output['items'] = items
     return output
 
-# Current WIP 
-# Transaction 5
+###############################################################################
+#
+# TRANSACTION 5
+#
+# Comment: WIP
+#
+###############################################################################
 def stock_level_transaction(w_id, d_id,T, L, current_session=session):
     parameters = {
         "w_id": w_id,
@@ -488,15 +501,18 @@ def stock_level_transaction(w_id, d_id,T, L, current_session=session):
         "ALLOW FILTERING"
     )
     rows = current_session.execute(cql_select_order, parameters=parameters)
-    
+
     st_count=0
     for row in rows:
         st_count+=1
     return st_count
-    
 
-# Current WIP - Not proven to work
-# Transaction 6
+
+###############################################################################
+#
+# TRANSACTION 6
+#
+###############################################################################
 def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     parameters = {
         "i": i,
@@ -543,7 +559,11 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
     # return output_1
     # return output_2
 
-# Transaction 7
+###############################################################################
+#
+# TRANSACTION 7
+#
+###############################################################################
 def top_balance_transaction(current_session=session):
     # TODO: Move this out
     list_of_distinct_wid = []
