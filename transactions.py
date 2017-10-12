@@ -33,7 +33,9 @@ def output(dictionary):
     elif output_form == "PRETTY_PRINT":
         pprint.pprint(dictionary)
         return None
-    else:
+    elif output_form == "SILENT":
+        return
+    elif output_form == "NONE":
         return dictionary
 
 ###############################################################################
