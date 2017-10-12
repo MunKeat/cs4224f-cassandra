@@ -1,6 +1,7 @@
 #!/bin/bash
 #rank $1
 #nc $2
+python dbstate.py > $1-state.txt
 for((i=0;i<$2;i++))
 {
 	if((i%$2==$1))
