@@ -16,9 +16,13 @@ data_directory = os.path.join(os.path.sep, current_directory, "data")
 # Configuration file
 default_parameters = {}
 execfile(config_path, default_parameters)
+# Remove builtin if exists, to prevent namespace pollution
+default_parameters.pop("__builtins__", None)
 
 cluster = Cluster(contact_points=default_parameters['hosts'])
 session = cluster.connect()
+
+cqlsh_host_ip = default_parameters['hosts'][0]
 
 def verify_cql_path(silent=False):
     # Very bad practise: This is a hack
@@ -84,7 +88,7 @@ def set_consistency(current_session=session, parameters={}):
     default_params.update(parameters)
     cql_set_consistency = "CONSISTENCY {consistency}".format(**default_params)
     # Execute set consistency
-    subprocess.call([cqlsh_path,"192.168.48.244","-e", cql_set_consistency])
+    subprocess.call([cqlsh_path, cqlsh_host_ip,"-e", cql_set_consistency])
 
 def create_column_families(current_session=session, parameters={}):
     "Creates Column Families and Materialised View(s) using CQL"
@@ -417,7 +421,7 @@ def load_data(current_session=session, parameters={}):
         cql_copy_orderline]
     # Execute
     for cql_command in list_of_copy_command:
-        subprocess.call([cqlsh_path,"192.168.48.244","-e", cql_command])
+        subprocess.call([cqlsh_path, cqlsh_host_ip,"-e", cql_command])
 
 def update_data(current_session=session, parameters={}):
     default_params = default_parameters.copy()

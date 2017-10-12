@@ -9,6 +9,8 @@ data_directory = os.path.join(os.path.sep, current_directory, "data")
 # Configuration file
 default_parameters = {}
 execfile(config_path, default_parameters)
+# Remove builtin if exists, to prevent namespace pollution
+default_parameters.pop("__builtins__", None)
 
 cluster = Cluster(default_parameters['hosts'])
 session = cluster.connect(default_parameters['keyspace'])
