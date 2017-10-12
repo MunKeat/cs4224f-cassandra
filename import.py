@@ -54,6 +54,7 @@ def verify_cql_path(silent=False):
 
 def verify_csv_files():
     # Allow for direct execution
+    massage_script = os.path.join(os.path.sep, current_directory, "massage.sh")
     subprocess.call(["chmod", "+x", massage_script])
     subprocess.call([massage_script])
     return
