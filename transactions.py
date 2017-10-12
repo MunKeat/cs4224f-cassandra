@@ -17,7 +17,7 @@ def output(dictionary):
     if output_form == "RAW_PRINT":
         print(dictionary)
         return None
-    else if output_form == "PRETTY_PRINT":
+    elif output_form == "PRETTY_PRINT":
         pprint.pprint(dictionary)
         return None
     else:
@@ -231,7 +231,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         'total_amound': total_amount,
         'ordered_item': ordered_items
     }
-    return output
+    return output(output)
 
 ###############################################################################
 #
@@ -329,10 +329,13 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         'district_address': (district.d_street_1, district.d_street_2, district.d_city, district.d_state, district.d_zip),
         'payment': payment
     }
-    return output
+    return output(output)
 
-# Current WIP - Not proven to work
-# Transaction 3
+###############################################################################
+#
+# TRANSACTION 3
+#
+###############################################################################
 def delivery_transaction(w_id, carrier_id, current_session=session):
     #TODO: validate carrier_id and w_id
     for d_id in range(1, 11):
@@ -416,8 +419,11 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
                 (customer.c_balance + order_amt, customer.c_delivery_cnt + 1, w_id, d_id, c_id)
         )
 
-# Current WIP - Not proven to work
-# Transaction 4
+###############################################################################
+#
+# TRANSACTION 4
+#
+###############################################################################
 def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     output = {}
     customer = current_session.execute(
@@ -570,10 +576,7 @@ def popular_item_transaction(i, w_id, d_id, L, current_session=session):
                   for single_ordered_items in order_item_id].count(True)
                     for item_id, item_name in distinct_popular_item]
     output_2 = [{"i_name": item[1], "percentage": float(item_count) / number_of_orders} for item, item_count in zip(distinct_popular_item, raw_count)]
-    output(output_1)
-    output(output_2)
-    # return output_1
-    # return output_2
+    return (output(output_1), output(output_2))
 
 ###############################################################################
 #
@@ -600,9 +603,8 @@ def top_balance_transaction(current_session=session):
         rows = current_session.execute(cql_select_customerbybalance)
         for row in rows:
             highest_balance.append(row)
-    # highest_balance.sort(key=lambda x: float(x.c_balance), reverse=True)
     highest_balance = sorted(highest_balance, key=lambda x:float(x.c_balance), reverse=True)
     highest_balance = highest_balance[:10]
     for customer in highest_balance:
         output.append({'c_first': customer.c_first, 'c_middle': customer.c_middle, 'c_last': customer.c_last, 'c_balance': customer.c_balance, 'w_name':customer.w_name, 'd_name': customer.d_name})
-    output(output)
+    return output(output)
