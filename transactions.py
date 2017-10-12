@@ -425,7 +425,7 @@ def delivery_transaction(w_id, carrier_id, current_session=session):
 #
 ###############################################################################
 def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
-    output = {}
+    result = {}
     customer = current_session.execute(
         """
         SELECT * 
@@ -438,11 +438,11 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
     )
     #1) out put customer information
     if not customer:
-        return output
-    output['c_first'] = customer[0].c_first
-    output['c_middle'] = customer[0].c_middle
-    output['c_last'] = customer[0].c_last
-    output['c_balance'] = customer[0].c_balance
+        return output(result)
+    result['c_first'] = customer[0].c_first
+    result['c_middle'] = customer[0].c_middle
+    result['c_last'] = customer[0].c_last
+    result['c_balance'] = customer[0].c_balance
     #2) get customer's last order
     orders = current_session.execute(
         """
@@ -463,14 +463,14 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
             last_order_carrier = order.o_carrier_id
             break
     if last_order_id is None:
-        return output
-    output['o_id'] = last_order_id
-    output['o_entry_d'] = last_order_date
-    output['o_carrier_id'] = last_order_carrier
+        return output(result)
+    result['o_id'] = last_order_id
+    result['o_entry_d'] = last_order_date
+    result['o_carrier_id'] = last_order_carrier
     #3) each item information
-    if output['o_id'] is None:
+    if result['o_id'] is None:
         #customer does not have any order yet
-        return output
+        return output(result)
     orderlines = current_session.execute(
         """
         SELECT * 
@@ -479,7 +479,7 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
         AND d_id = %s
         AND o_id = %s;
         """,
-        (c_w_id, c_d_id, output['o_id'])
+        (c_w_id, c_d_id, result['o_id'])
     )
     items = {}
     for orderline in orderlines:
@@ -489,8 +489,8 @@ def order_status_transaction(c_w_id, c_d_id, c_id, current_session = session):
         items[orderline.ol_number]['ol_quantity'] = orderline.ol_quantity
         items[orderline.ol_number]['ol_amount'] = orderline.ol_amount
         items[orderline.ol_number]['ol_delivery_d'] = orderline.ol_delivery_d
-    output['items'] = items
-    return output(output)
+    result['items'] = items
+    return output(result)
 
 ###############################################################################
 #
