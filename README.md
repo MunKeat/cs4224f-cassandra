@@ -11,6 +11,8 @@ In summary, ensure the following:
 * `cassandra` running on all nodes
 * [Dataset](http://www.comp.nus.edu.sg/~cs4224/4224-project-files.zip)
 
+<hr/>
+
 ### Setting up virtualenv
 
 The following code will circumvent the restriction where users are not able to use `pip` to install the package in `/usr/lib/python2.7/site-packages`
@@ -26,6 +28,8 @@ $ # The full path of virtualenv.py will be obtained, take note of the path
 $ # A possible output: /home/stuproj/cs4224f/virtualenv-1.9/virtualenv.py (results will vary)
 ```
 
+<hr/>
+
 ### Obtaining File Path of cqlsh
 
 1. Run the following script to get all the possible path of cqlsh
@@ -34,6 +38,8 @@ $ whereis cqlsh
 $ # Possible output
 $ # cqlsh: /temp/cs4224f/cassandra/bin/cqlsh /temp/cs4224f/cassandra/bin/cqlsh.bat /temp/cs4224f/cassandra/bin/cqlsh.py
 ```
+
+<hr/>
 
 ### Setup
 
@@ -86,8 +92,11 @@ $ source ./env/bin/activate
 
 7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, ruhn step 4 to step 6 with different `config.txt`
 
+<hr/>
+
 ### Running Cassandra with DataStax Python Driver
 
+<hr/>
 
 ### Exit
 
