@@ -6,7 +6,6 @@ from datetime import datetime
 cluster = Cluster(contact_points=['192.168.48.244','192.168.48.245','192.168.48.246','192.168.48.247','192.168.48.248'])
 session = cluster.connect('warehouse')
 
-# Current WIP - Not proven to work
 # assuming items is a list of items in the order
 # Transaction 1
 def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
@@ -103,9 +102,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
     )
+    batch = BatchStatement()
     # Create order line for each item in the order
     for ol_number in range(0, M):
-        batch = BatchStatement()
         item = items[ol_number]
         ol_i_id = item[0]
         ol_supply_w_id = item[1]
@@ -139,12 +138,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
         elif (ol_quantity == popular_item_qty):
             popular_item_id.append(ol_i_id)
             popular_item_name.append(item_name)
-
         # Create a new order line
         ol_info = (w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
         batch.add(create_ol_stmt, ol_info)
-        # Execute batch operations
-        session.execute(batch)
         # Update other info for output
         ordered_item = {
                 'item_number': ol_i_id, 
@@ -193,20 +189,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
             %(ordered_items)s)
         """
     )
-    current_session.execute(cql_create_order, order_info)
-    # Update last order of customer
-    current_session.execute(
-        """
-        UPDATE customer
-        SET last_order_id = %(last_order_id)s,
-        last_order_date = %(last_order_date)s
-        WHERE w_id = %(w_id)s
-        AND d_id = %(d_id)s
-        AND c_id = %(c_id)s
-        """,
-        {'last_order_id': order_number, 'last_order_date': o_entry_d, 'w_id': w_id, 'd_id': d_id, 'c_id': c_id}
-    )
-    batch.add()
+    batch.add(cql_create_order, order_info)
+    ##current_session.execute(cql_create_order, order_info)
+    # Execute batch operations
     session.execute(batch)
 
     output = {
@@ -226,9 +211,9 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session=session):
     }
     return output
 
-# Current WIP - Not proven to work
 # Transaction 2
 def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
+    batch = BatchStatement()
     # Retrieve customer information
     customers = current_session.execute(
         """
@@ -247,7 +232,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     # Update customer
     c_balance -= payment
     c_ytd_payment += payment
-    current_session.execute(
+    batch.add(
         """
         UPDATE customer
         SET c_balance = %(c_balance)s,
@@ -272,7 +257,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     w_ytd = warehouse.w_ytd
     # Update warehouse
     w_ytd += payment
-    current_session.execute(
+    batch.add(
         """
         UPDATE warehouse
         SET w_ytd = %(w_ytd)s
@@ -294,7 +279,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
     d_ytd = district.d_ytd
     # Update district
     d_ytd += payment
-    current_session.execute(
+    batch.add(
         """
         UPDATE district
         SET d_ytd = %(d_ytd)s
@@ -303,6 +288,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session=session):
         """,
         {'w_id': c_w_id, 'd_id':c_d_id, 'd_ytd': d_ytd}
     )
+    current_session.execute(batch)
     output = {
         'customer': (c_w_id, c_d_id, c_id),
         'customer_name': (customer.c_first, customer.c_middle, customer. c_last),
