@@ -6,14 +6,16 @@ We will assume that you are using a Linux-based system, or at least have access 
 
 In summary, ensure the following:
 
-* virtualenv (Python package)
+* virtualenv (Ensure that the Python package is working)
 * File path for `cqlsh`
 * `cassandra` running on all nodes
 * [Dataset](http://www.comp.nus.edu.sg/~cs4224/4224-project-files.zip)
 
+Refer to the section [Setting up virtualenv](#set_virtualenv), and [Obtaining File Path of cqlsh](#get_cqlsh) for help.
+
 <hr/>
 
-### Setting up virtualenv
+### <a name="set_virtualenv"></a> Setting up virtualenv
 
 The following code will circumvent the restriction where users are not able to use `pip` to install the package in `/usr/lib/python2.7/site-packages`
 
@@ -30,13 +32,24 @@ $ # A possible output: /home/stuproj/cs4224f/virtualenv-1.9/virtualenv.py (resul
 
 <hr/>
 
-### Obtaining File Path of cqlsh
+### <a name="get_cqlsh"></a> Obtaining File Path of cqlsh
 
 1. Run the following script to get all the possible path of cqlsh
 ```
 $ whereis cqlsh
 $ # Possible output
-$ # cqlsh: /temp/cs4224f/cassandra/bin/cqlsh /temp/cs4224f/cassandra/bin/cqlsh.bat /temp/cs4224f/cassandra/bin/cqlsh.py
+$ # cqlsh: /temp/cs4224f/cassandra/bin/cqlsh /temp/cs4224f/cassandra/bin/cqlsh.bat
+```
+
+1a. Alternatively, use the following to determine the full path of the executable `cqlsh`
+
+```
+$ type -a cqlsh
+```
+
+2. Ensure that the full path of the executable permits you to run query on it. To test, use the following
+```
+$ <cqlsh's path> -e DESCRIBE keyspaces;
 ```
 
 <hr/>
@@ -51,9 +64,7 @@ $ cd ~
 $ unzip <Project File>
 ```
 
-1. Create an environment directory, `env`, using virtualenv. 
-
-Replace the variable \<virtualenv\> with the full path of the file, `virtualenv.py`
+1. Create an environment directory, `env`. We assume that you have set up virtualenv using the above - hence replace the variable \<virtualenv\> with the full path of the file, `virtualenv.py`. Otherwise, you may simply replace \<virtualenv\> with `virtualenv`.
 
 ```
 $ # Ensure that you are at the root of the project repository
@@ -71,7 +82,7 @@ $ source ./env/bin/activate
 (env) $ pip install -r requirements.txt
 ```
 
-3. Download the dataset (.csv file) if you have not, and move them to /data folder
+3. Download the dataset if you have not, and move them to `/data` folder
 
 ```
 (env) $ wget http://www.comp.nus.edu.sg/~cs4224/4224-project-files.zip
@@ -79,7 +90,7 @@ $ source ./env/bin/activate
 (env) $ mv ./4224-project-files/data-files/*.csv ./data
 ```
 
-4. Set the configuration file
+4. Set up the configuration file
 
 
 5. Run `import.py` to import the data into cassandra
@@ -90,7 +101,7 @@ $ source ./env/bin/activate
 
 6. You will be prompted to confirm the correct `cqlsh` path
 
-7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, ruhn step 4 to step 6 with different `config.txt`
+7. By the completion of the script, the data would have been imported into the cassandra database. To repeat the experiment with different configuration, run step 4 to step 6 with different `config.txt`
 
 <hr/>
 
