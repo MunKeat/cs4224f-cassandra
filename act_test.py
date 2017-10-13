@@ -67,9 +67,9 @@ if __name__ == '__main__':
 
 	total_time=after_time-before_time
 
-	sys.stderr.write("Total number of transactions processed:%d\n",num_tran)
-	sys.stderr.write("Total elapsed time for processing the transactions:%f\n",total_time)
-	sys.stderr.write("Transaction throughput:%f\n",(num_tran/total_time))
+	sys.stderr.write("Total number of transactions processed:%d\n" % num_tran)
+	sys.stderr.write("Total elapsed time for processing the transactions:%f\n" % total_time)
+	sys.stderr.write("Transaction throughput:%f\n" % (num_tran/total_time))
 
 
 '''You can use a new cqlsh command, CONSISTENCY, to set the consistency level for queries from the current cqlsh session.
