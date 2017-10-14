@@ -469,12 +469,12 @@ def delivery_transaction(w_id, carrier_id, current_session):
         batch.add(
                 """
                 UPDATE  customer
-                    SET c_balance = %s, c_delivery_cnt = %s
+                    SET c_balance = %s
                     WHERE w_id = %s 
                     AND d_id = %s
                     AND c_id = %s;
                 """,
-                (customer.c_balance + order_amt, customer.c_delivery_cnt + 1, w_id, d_id, c_id)
+                (customer.c_balance + order_amt, w_id, d_id, c_id)
         )
         # update customer counter
         batch.add(
