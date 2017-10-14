@@ -286,7 +286,6 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
 #
 ###############################################################################
 def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
-    batch = BatchStatement()
     # Retrieve customer information
     customers = current_session.execute(
         """
@@ -305,7 +304,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
     # Update customer
     c_balance -= payment
     c_ytd_payment += payment
-    batch.add(
+    current_session.execute(
         """
         UPDATE customer
         SET c_balance = %(c_balance)s,
@@ -317,7 +316,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
         {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
     )
     #update customer counter
-    batch.add(
+    current_session.execute(
         """
         UPDATE customer_counter
         SET c_payment_cnt = c_payment_cnt + 1
@@ -340,7 +339,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
     w_ytd = warehouse.w_ytd
     # Update warehouse
     w_ytd += payment
-    batch.add(
+    current_session.execute(
         """
         UPDATE warehouse
         SET w_ytd = %(w_ytd)s
@@ -362,7 +361,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
     d_ytd = district.d_ytd
     # Update district
     d_ytd += payment
-    batch.add(
+    current_session.execute(
         """
         UPDATE district
         SET d_ytd = %(d_ytd)s
@@ -371,7 +370,6 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
         """,
         {'w_id': c_w_id, 'd_id':c_d_id, 'd_ytd': d_ytd}
     )
-    current_session.execute(batch)
     result = {
         'customer': (c_w_id, c_d_id, c_id),
         'customer_name': (customer.c_first, customer.c_middle, customer. c_last),
@@ -395,8 +393,9 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
 ###############################################################################
 def delivery_transaction(w_id, carrier_id, current_session):
     #TODO: validate carrier_id and w_id
-    batch = BatchStatement()
+
     for d_id in range(1, 11):
+        batch = BatchStatement()
         # a)
         orders = current_session.execute(
             """
@@ -476,8 +475,9 @@ def delivery_transaction(w_id, carrier_id, current_session):
                 """,
                 (customer.c_balance + order_amt, w_id, d_id, c_id)
         )
+        current_session.execute(batch)
         # update customer counter
-        batch.add(
+        current_session.execute(
             """
             UPDATE customer_counter
             SET c_delivery_cnt = c_delivery_cnt + 1
@@ -487,7 +487,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
             """,
             {'c_w_id': w_id, 'c_d_id': d_id, 'c_id': c_id}
         )
-    current_session.execute(batch)
+
 
 ###############################################################################
 #
