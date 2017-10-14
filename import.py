@@ -405,6 +405,9 @@ def load_data(current_session=session, parameters={}):
         cql_copy_orderline]
     # Execute
     for cql_command in list_of_copy_command:
+        # Set consistency prior to calling CQLSH
+        consistency_level = "CONSISTENCY {consistency}; ".format(**default_params)
+        cql_command = (consistency_level + cql_command)
         subprocess.call([cqlsh_path, cqlsh_host_ip,"-e", cql_command])
 
 def update_data(current_session=session, parameters={}):
