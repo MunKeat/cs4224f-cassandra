@@ -16,7 +16,7 @@ default_parameters.pop("__builtins__", None)
 
 cluster = Cluster(default_parameters['hosts'])
 session = cluster.connect(default_parameters['keyspace'])
-
+session.default_consistency_level=default_parameters['consistency_level']
 output_form = default_parameters['output_form']
 
 ###############################################################################
