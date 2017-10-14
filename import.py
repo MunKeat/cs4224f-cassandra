@@ -108,8 +108,8 @@ def create_column_families(current_session=session, parameters={}):
             "c_discount     DOUBLE, "
             "c_balance      DOUBLE, "
             "c_ytd_payment  DOUBLE, "
-            "c_payment_cnt  INT, "
-            "c_delivery_cnt INT, "
+            #"c_payment_cnt  INT, "
+            #"c_delivery_cnt INT, "
             "c_data         TEXT, "
             "PRIMARY KEY ((w_id), d_id, c_id) "
         ") WITH CLUSTERING ORDER BY (d_id DESC, c_id DESC); "
@@ -156,7 +156,7 @@ def create_column_families(current_session=session, parameters={}):
             "d_zip                      TEXT, "
             "d_tax                      DOUBLE, "
             "d_ytd                      DOUBLE, "
-            "d_next_o_id                INT, "
+            #"d_next_o_id                INT, "
             "PRIMARY KEY ((w_id), d_id) "
         ") WITH CLUSTERING ORDER BY (d_id DESC); "
         ).format(**default_params)
@@ -190,8 +190,8 @@ def create_column_families(current_session=session, parameters={}):
             "i_data                     TEXT, "
             "s_quantity                 DOUBLE, "
             "s_ytd                      DOUBLE, "
-            "s_order_cnt                INT, "
-            "s_remote_cnt               INT, "
+            #"s_order_cnt                INT, "
+            #"s_remote_cnt               INT, "
             "s_dist_info_01             TEXT, "
             "s_dist_info_02             TEXT, "
             "s_dist_info_03             TEXT, "
@@ -205,6 +205,33 @@ def create_column_families(current_session=session, parameters={}):
             "s_data                     TEXT, "
             "PRIMARY KEY ((w_id), i_id) "
         ") WITH CLUSTERING ORDER BY (i_id DESC); "
+        ).format(**default_params)
+    cql_create_districtcounter = (
+        "CREATE TABLE {keyspace}.district_counter( "
+            "d_w_id                       INT, "
+            "d_id                         INT, "
+            "d_next_oid                   COUNTER, "
+            "PRIMARY KEY (d_w_id, d_id) "
+        "); "
+        ).format(**default_params)
+    cql_create_customercounter = (
+        "CREATE TABLE {keyspace}.customer_counter( "
+            "c_w_id                       INT, "
+            "c_d_id                       INT, "
+            "c_id                         INT, "
+            "c_payment_cnt                COUNTER, "
+            "c_delivery_cnt               COUNTER, "
+            "PRIMARY KEY (c_w_id, c_d_id, c_id) "
+        "); "
+        ).format(**default_params)
+    cql_create_stockcounter = (
+        "CREATE TABLE {keyspace}.stock_counter( "
+            "s_w_id                       INT, "
+            "s_i_id                       INT, "
+            "s_order_cnt                  COUNTER, "
+            "s_remote_cnt                 COUNTER, "
+            "PRIMARY KEY (s_w_id, s_i_id) "
+        "); "
         ).format(**default_params)
     cql_create_customerbybalance = (
         "CREATE MATERIALIZED VIEW {keyspace}.customer_by_balance AS "
@@ -222,6 +249,9 @@ def create_column_families(current_session=session, parameters={}):
     current_session.execute(cql_create_district)
     current_session.execute(cql_create_order)
     current_session.execute(cql_create_stockbywarehouse)
+    current_session.execute(cql_create_districtcounter)
+    current_session.execute(cql_create_customercounter)
+    current_session.execute(cql_create_stockcounter)
     current_session.execute(cql_create_customerbybalance)
 
 def update_csv_files(parameters={}):
@@ -253,7 +283,7 @@ def helper_update_customer_csv(parameters={}):
                         "c_street_1", "c_street_2", "c_city", "c_state",
                         "c_zip", "c_phone", "c_since", "c_credit",
                         "c_credit_lim", "c_discount", "c_balance",
-                        "c_ytd_payment", "c_payment_cnt", "c_delivery_cnt",
+                        "c_ytd_payment",
                         "c_data", "last_order_id", "last_order_date",
                         "last_order_carrier"]
     order = helper_read_csv("cassandra_order.csv")
@@ -281,7 +311,7 @@ def helper_update_district_csv(parameters={}):
     district = helper_read_csv("cassandra_district.csv")
     district.columns = ["w_id", "d_id", "d_name", "d_street_1", "d_street_2",
                         "d_city", "d_state", "d_zip", "d_tax", "d_ytd",
-                        "d_next_o_id", "last_unfulfilled_order"]
+                        "last_unfulfilled_order"]
     order = helper_read_csv("cassandra_order.csv")
     order.columns = ["w_id", "d_id", "o_id", "c_id", "o_carrier_id",
                      "o_ol_cnt", "o_all_local", "o_entry_d", "c_first",
@@ -352,7 +382,7 @@ def load_data(current_session=session, parameters={}):
             "c_first, c_middle, c_last, "
             "c_street_1, c_street_2, c_city, c_state, c_zip,"
             "c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, "
-            "c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data) "
+            "c_ytd_payment, c_data) "
         "FROM '{data_dir}/cassandra_customer.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
@@ -376,7 +406,7 @@ def load_data(current_session=session, parameters={}):
     cql_copy_stockitem = (
         "COPY {keyspace}.stock_by_warehouse ("
             "w_id, i_id, i_name, i_price, i_im_id, i_data, "
-            "s_quantity, s_ytd, s_order_cnt, s_remote_cnt, "
+            "s_quantity, s_ytd, "
             "s_dist_info_01, s_dist_info_02, s_dist_info_03, "
             "s_dist_info_04, s_dist_info_05, s_dist_info_06, "
             "s_dist_info_07, s_dist_info_08, s_dist_info_09, "
@@ -387,7 +417,7 @@ def load_data(current_session=session, parameters={}):
     cql_copy_district = (
         "COPY {keyspace}.district ("
             "w_id, d_id, d_name, d_street_1, d_street_2, "
-            "d_city, d_state, d_zip, d_tax, d_ytd, d_next_o_id) "
+            "d_city, d_state, d_zip, d_tax, d_ytd) "
         "FROM '{data_dir}/cassandra_district.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
@@ -399,10 +429,29 @@ def load_data(current_session=session, parameters={}):
         "FROM '{data_dir}/cassandra_order-line.csv' WITH DELIMITER=',' "
             "AND HEADER=FALSE AND NULL='{null_rep}';"
         ).format(**default_params)
+    cql_copy_districtcounter = (
+        "COPY {keyspace}.district_counter ("
+            "d_w_id, d_id, d_next_oid) "
+        "FROM '{data_dir}/cassandra_district-counter.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+        ).format(**default_params)
+    cql_copy_customercounter = (
+        "COPY {keyspace}.customer_counter ("
+            "c_w_id, c_d_id, c_id, c_payment_cnt, c_delivery_cnt) "
+        "FROM '{data_dir}/cassandra_customer-counter.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+        ).format(**default_params)
+    cql_copy_stockcounter = (
+        "COPY {keyspace}.stock_counter ("
+            "s_w_id, s_i_id, s_order_cnt, s_remote_cnt) "
+        "FROM '{data_dir}/cassandra_stock-counter.csv' WITH DELIMITER=',' "
+            "AND HEADER=FALSE AND NULL='{null_rep}';"
+        ).format(**default_params)
     # Consolidate all COPY commands
     list_of_copy_command = [cql_copy_customer, cql_copy_warehouse,
         cql_copy_orders, cql_copy_stockitem, cql_copy_district,
-        cql_copy_orderline]
+        cql_copy_orderline, cql_copy_districtcounter,cql_copy_stockcounter,
+        cql_copy_customercounter]
     # Execute
     for cql_command in list_of_copy_command:
         # Set consistency prior to calling CQLSH

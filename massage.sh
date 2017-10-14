@@ -36,7 +36,7 @@ function create_new_csv () {
   # Produce StockByWarehouse Column Family
   join -a 1 -j1 2 -j2 1 -t ',' \
        -o 1.1 2.1 2.2 2.3 2.4 2.5 \
-          1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 -e "null"\
+          1.3 1.4 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 -e "null"\
        <(cat "${data_dir}/stock.csv" | sort -t',' -k2,2) \
        <(cat "${data_dir}/item.csv"|sort -t',' -k1,1) > "${data_dir}/cassandra_stockitem.csv"
 
@@ -47,14 +47,14 @@ function create_new_csv () {
   # Produce (Temporary) Warehouse District
   join -a 1 -j 1 -t ',' \
        -o 1.1 2.2 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 \
-          2.3 2.4 2.5 2.6 2.7 2.8 2.9 2.10 2.11 -e "null"\
+          2.3 2.4 2.5 2.6 2.7 2.8 2.9 2.10 -e "null"\
        "${data_dir}/warehouse.csv" "${data_dir}/district.csv" > "${data_dir}/temp_warehouse_district.csv"
 
   # Joins Warehouse-District With Customer
   # Produce Customer Column Family
   join -a 1 -j 1 -t ',' \
        -o 1.2 1.3 1.4 2.4 2.5 2.6 2.10 2.12 2.13 2.14 2.18 \
-          1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 1.18 1.19 1.20 1.21 1.22 -e "null" \
+          1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13 1.14 1.15 1.16 1.17 1.18 1.21 1.22 -e "null" \
        <(paste -d',' <(cut -d',' --output-delimiter=- -f1,2 "${data_dir}/customer.csv") "${data_dir}/customer.csv" | sort -t',' -k1,1) \
        <(paste -d',' <(cut -d',' --output-delimiter=- -f1,2 "${data_dir}/temp_warehouse_district.csv") "${data_dir}/temp_warehouse_district.csv" | sort -t',' -k1,1) > "${data_dir}/cassandra_customer.csv"
 
@@ -81,6 +81,22 @@ function create_new_csv () {
   if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_order-line.csv" ) ]]; then
     echo "Created: ${data_dir}/cassandra_order-line.csv"; fi
 
+  ###########COUNTER#############
+  #create district_counter
+  awk -F "," '{print $1 "," $2 "," $11}' "${data_dir}/district.csv" >>"${data_dir}/cassandra_district-counter.csv"
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_district-counter.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_district-counter.csv"; fi
+
+  #create customer_counter
+  awk -F "," '{print $1 "," $2 "," $3 "," $19 "," $20}' "${data_dir}/customer.csv" >>"${data_dir}/cassandra_customer-counter.csv"
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_customer-counter.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_customer-counter.csv"; fi
+
+  #create stock_counter
+  awk -F "," '{print $1 "," $2 "," $3 "," $5 "," $6}' "${data_dir}/stock.csv" >>"${data_dir}/cassandra_stock-counter.csv"
+  if [[ ( "${output}" = true ) && ( "$?" -eq 0 ) && ( -s "${data_dir}/cassandra_stock-counter.csv" ) ]]; then
+    echo "Created: ${data_dir}/cassandra_stock-counter.csv"; fi
+  ###############################
 
   # Set all other tables with cassandra_
   declare -a unchanged_file=("district.csv" "warehouse.csv")

@@ -48,9 +48,7 @@ update_stock_stmt = session.prepare(
     """
     UPDATE stock_by_warehouse
     SET s_quantity = ?,
-    s_ytd = ?,
-    s_order_cnt = ?,
-    s_remote_cnt = ?
+    s_ytd = ?
     WHERE w_id = ?
     AND i_id = ?
     """
@@ -61,6 +59,22 @@ create_ol_stmt = session.prepare(
     (w_id, d_id, o_id, ol_number, ol_i_id, ol_i_name, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
     VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+)
+update_stock_local_counter = session.prepare(
+    """
+    UPDATE stock_counter
+    SET s_order_cnt = s_order_cnt + 1
+    WHERE s_w_id = ?
+    AND s_i_id = ?
+    """
+)
+update_stock_remote_counter = session.prepare(
+    """
+    UPDATE stock_counter
+    SET s_remote_cnt = s_remote_cnt + 1
+    WHERE s_w_id = ?
+    AND s_i_id = ?
     """
 )
 
@@ -113,16 +127,26 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
     )
     district = districts[0]
     d_tax = district.d_tax
-    order_number = district.d_next_o_id
-    # Update next available order number
-    current_session.execute(
+    #get order number
+    district_counter = current_session.execute(
         """
-        UPDATE district
-        SET d_next_o_id = %(d_next_o_id)s
+        SELECT d_next_o_id
+        FROM district_counter
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         """,
-        {'d_id': d_id, 'w_id': w_id, 'd_next_o_id': order_number + 1}
+        {'d_id': d_id, 'w_id': w_id}
+    )
+    order_number = district_counter.d_next_o_id
+    # Update next available order number
+    current_session.execute(
+        """
+        UPDATE district_counter
+        SET d_next_o_id = d_next_o_id + 1
+        WHERE w_id = %(w_id)s
+        AND d_id = %(d_id)s
+        """,
+        {'d_id': d_id, 'w_id': w_id}
     )
 
     total_amount = 0.0
@@ -148,7 +172,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
         # Retrieve stock and item info
         item_stocks = current_session.execute(
             """
-            SELECT s_quantity, s_ytd, {} AS s_dist_info, s_order_cnt, s_remote_cnt, i_name, i_price
+            SELECT s_quantity, s_ytd, {} AS s_dist_info, i_name, i_price
             FROM stock_by_warehouse
             WHERE w_id = %(w_id)s
             AND i_id = %(i_id)s
@@ -161,8 +185,6 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
         ol_dist_info = item_stock.s_dist_info
         item_price = item_stock.i_price
         item_name = item_stock.i_name
-        s_order_cnt = item_stock.s_order_cnt
-        s_remote_cnt = item_stock.s_remote_cnt
         item_amount = ol_quantity * item_price
         total_amount += item_amount
         # Update stock
@@ -172,8 +194,11 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
         stock_ytd_adjusted = stock_ytd + ol_quantity
         isRemote = (w_id!=ol_supply_w_id)
         if isRemote:
+            batch.add(update_stock_remote_counter, (w_id, ol_i_id))
             isAllLocal = False
-        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, s_order_cnt + 1, s_remote_cnt + int(isRemote), ol_supply_w_id, ol_i_id))
+        else:
+            batch.add(update_stock_local_counter, (w_id, ol_i_id))
+        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, ol_supply_w_id, ol_i_id))
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
@@ -276,7 +301,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
     customer = customers[0]
     c_balance = customer.c_balance
     c_ytd_payment = customer.c_ytd_payment
-    c_payment_cnt = customer.c_payment_cnt
+    #c_payment_cnt = customer.c_payment_cnt
     # Update customer
     c_balance -= payment
     c_ytd_payment += payment
@@ -284,13 +309,23 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
         """
         UPDATE customer
         SET c_balance = %(c_balance)s,
-        c_ytd_payment = %(c_ytd_payment)s,
-        c_payment_cnt = %(c_payment_cnt)s
+        c_ytd_payment = %(c_ytd_payment)s
         WHERE w_id = %(w_id)s
         AND d_id = %(d_id)s
         AND c_id = %(c_id)s
         """,
-        {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment,'c_payment_cnt': c_payment_cnt + 1, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
+        {'c_balance': c_balance, 'c_ytd_payment': c_ytd_payment, 'w_id': c_w_id, 'd_id': c_d_id, 'c_id': c_id}
+    )
+    #update customer counter
+    batch.add(
+        """
+        UPDATE customer_counter
+        SET c_payment_cnt = c_payment_cnt + 1
+        WHERE c_w_id = %(w_id)s
+        AND c_d_id = %(d_id)s
+        AND c_id = %(d_id)s
+        """,
+        {'c_w_id': c_w_id, 'c_d_id': c_d_id, 'c_id': c_id}
     )
     # Retrieve warehouse information
     warehouses = current_session.execute(
@@ -360,6 +395,7 @@ def payment_transaction(c_w_id, c_d_id, c_id, payment, current_session):
 ###############################################################################
 def delivery_transaction(w_id, carrier_id, current_session):
     #TODO: validate carrier_id and w_id
+    batch = BatchStatement()
     for d_id in range(1, 11):
         # a)
         orders = current_session.execute(
@@ -382,7 +418,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
         if o_id is None:
             continue
         # b)
-        current_session.execute(
+        batch.add(
                     """
                     UPDATE  orders
                         SET o_carrier_id = %s
@@ -407,7 +443,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
         timestamp = datetime.utcnow()
         for orderline in orderlines:
             order_amt += orderline.ol_amount
-            current_session.execute(
+            batch.add(
                 """
                 UPDATE  orderline
                     SET ol_delivery_d = %s
@@ -430,7 +466,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
             (w_id, d_id, c_id)
         )
         customer = customers[0]
-        current_session.execute(
+        batch.add(
                 """
                 UPDATE  customer
                     SET c_balance = %s, c_delivery_cnt = %s
@@ -440,6 +476,18 @@ def delivery_transaction(w_id, carrier_id, current_session):
                 """,
                 (customer.c_balance + order_amt, customer.c_delivery_cnt + 1, w_id, d_id, c_id)
         )
+        # update customer counter
+        batch.add(
+            """
+            UPDATE customer_counter
+            SET c_delivery_cnt = c_delivery_cnt + 1
+            WHERE c_w_id = %(w_id)s
+            AND c_d_id = %(d_id)s
+            AND c_id = %(d_id)s
+            """,
+            {'c_w_id': w_id, 'c_d_id': d_id, 'c_id': c_id}
+        )
+    current_session.execute(batch)
 
 ###############################################################################
 #
