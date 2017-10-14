@@ -57,6 +57,7 @@ if __name__ == '__main__':
 	
 	cluster = Cluster(contact_points=default_parameters['hosts'])
 	session = cluster.connect("warehouse")
+	session.default_consistency_level=default_parameters['consistency_level']
 	
 	num_tran=0
 	before_time=time.time()
