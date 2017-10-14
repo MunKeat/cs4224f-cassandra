@@ -162,7 +162,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
     elif (d_id < 10):
         s_dist_col_name = 's_dist_info_0' + str(d_id)
 
-    batch = BatchStatement()
+
     # Create order line for each item in the order
     for ol_number in range(0, M):
         item = items[ol_number]
@@ -194,11 +194,11 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
         stock_ytd_adjusted = stock_ytd + ol_quantity
         isRemote = (w_id!=ol_supply_w_id)
         if isRemote:
-            batch.add(update_stock_remote_counter, (w_id, ol_i_id))
+            current_session.execute(update_stock_remote_counter, (w_id, ol_i_id))
             isAllLocal = False
         else:
-            batch.add(update_stock_local_counter, (w_id, ol_i_id))
-        batch.add(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, ol_supply_w_id, ol_i_id))
+            current_session.execute(update_stock_local_counter, (w_id, ol_i_id))
+        current_session.execute(update_stock_stmt, (adjusted_qty, stock_ytd_adjusted, ol_supply_w_id, ol_i_id))
         # Update popular item
         if (ol_quantity > popular_item_qty):
             popular_item_qty = ol_quantity
@@ -209,7 +209,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
             popular_item_name.append(item_name)
         # Create a new order line
         ol_info = (w_id, d_id, order_number, ol_number, ol_i_id, item_name, item_amount, ol_supply_w_id, ol_quantity, ol_dist_info)
-        batch.add(create_ol_stmt, ol_info)
+        current_session.execute(create_ol_stmt, ol_info)
         # Update other info for output
         ordered_item = {
                 'item_number': ol_i_id, 
@@ -258,10 +258,7 @@ def new_order_transaction(c_id, w_id, d_id, M, items, current_session):
             %(ordered_items)s)
         """
     )
-    batch.add(cql_create_order, order_info)
-    ##current_session.execute(cql_create_order, order_info)
-    # Execute batch operations
-    session.execute(batch)
+    current_session.execute(cql_create_order, order_info)
 
     result = {
         'w_id': w_id,
@@ -395,7 +392,6 @@ def delivery_transaction(w_id, carrier_id, current_session):
     #TODO: validate carrier_id and w_id
 
     for d_id in range(1, 11):
-        batch = BatchStatement()
         # a)
         orders = current_session.execute(
             """
@@ -417,7 +413,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
         if o_id is None:
             continue
         # b)
-        batch.add(
+        current_session.execute(
                     """
                     UPDATE  orders
                         SET o_carrier_id = %s
@@ -442,7 +438,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
         timestamp = datetime.utcnow()
         for orderline in orderlines:
             order_amt += orderline.ol_amount
-            batch.add(
+            current_session.execute(
                 """
                 UPDATE  orderline
                     SET ol_delivery_d = %s
@@ -465,7 +461,7 @@ def delivery_transaction(w_id, carrier_id, current_session):
             (w_id, d_id, c_id)
         )
         customer = customers[0]
-        batch.add(
+        current_session.execute(
                 """
                 UPDATE  customer
                     SET c_balance = %s
@@ -475,7 +471,6 @@ def delivery_transaction(w_id, carrier_id, current_session):
                 """,
                 (customer.c_balance + order_amt, w_id, d_id, c_id)
         )
-        current_session.execute(batch)
         # update customer counter
         current_session.execute(
             """
