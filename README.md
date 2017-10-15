@@ -98,9 +98,11 @@ $ source ./env/bin/activate
 (env) $ mv ./4224-project-files/data-files/*.csv ./data
 ```
 
-4. Set up the configuration file. `config.conf`
+4. Set up the configuration file. `config.conf`. Note that the `consistency` and `consistency_level` must not contradict. That is, if `consistency_level` is set at `1`, then `consistency` __MUST__ be set at `ONE`; if `consistency_level` is set at `4` `consistency` __MUST__ be set at `QUORUM`
 
 ![Configuration file setting](documentation/config-text.png)
+
+4a. Note that the number of clients will be used as an argument for a script in the `total_act_test.sh` and hence, may not be configurable from the `config.conf` file.
 
 5. Run `import.py` to import the data into cassandra
 
