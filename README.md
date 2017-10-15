@@ -90,12 +90,13 @@ $ source ./env/bin/activate
 (env) $ pip install -r requirements.txt
 ```
 
-3. Download the dataset if you have not, and move them to `/data` folder
+3. Download the dataset if you have not, and move them to `/data` folder. Thereafter, move all transaction files to the `/xact-files/` folder.
 
 ```
 (env) $ wget http://www.comp.nus.edu.sg/~cs4224/4224-project-files.zip
 (env) $ unzip 4224-project-files.zip
 (env) $ mv ./4224-project-files/data-files/*.csv ./data
+(env) $ mv ./4224-project-files/xact-files/* ./xact-files/
 ```
 
 4. Set up the configuration file. `config.conf`. Note that the `consistency` and `consistency_level` must not contradict. That is, if `consistency_level` is set at `1`, then `consistency` __MUST__ be set at `ONE`; if `consistency_level` is set at `4` `consistency` __MUST__ be set at `QUORUM`
