@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "act_test.py", line 65, in <module>
+    num_tran=act_test(session)
+  File "act_test.py", line 27, in act_test
+    a=transactions.delivery_transaction(current_session=session, w_id=int(para[1]), carrier_id=int(para[2]))
+  File "/home/stuproj/cs4224f/playground/transactions.py", line 377, in delivery_transaction
+    for order in orders:
+  File "cassandra/cluster.py", line 4066, in cassandra.cluster.ResultSet.next (cassandra/cluster.c:83923)
+  File "cassandra/cluster.py", line 4081, in cassandra.cluster.ResultSet.fetch_next_page (cassandra/cluster.c:84091)
+  File "cassandra/cluster.py", line 3844, in cassandra.cluster.ResponseFuture.result (cassandra/cluster.c:80834)
+cassandra.ReadTimeout: Error from server: code=1200 [Coordinator node timed out waiting for replica nodes' responses] message="Operation timed out - received only 0 responses." info={'received_responses': 0, 'required_responses': 2, 'consistency': 'QUORUM'}
